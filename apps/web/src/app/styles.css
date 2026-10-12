@@ -51,7 +51,7 @@ input {
   background: #faf8f5;
   display: grid;
   gap: 16px;
-  grid-template-columns: minmax(150px, 220px) minmax(260px, 660px) auto;
+  grid-template-columns: minmax(150px, 220px) minmax(280px, 700px);
   justify-content: center;
   padding: 8px 24px;
   position: sticky;
@@ -93,31 +93,6 @@ input {
   color: var(--ink);
   outline: 0;
   width: 100%;
-}
-
-.header-contact-icons {
-  align-items: center;
-  display: flex;
-  gap: 10px;
-}
-
-.header-contact-icons a {
-  align-items: center;
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 999px;
-  box-shadow: 0 8px 24px rgba(23, 59, 31, 0.12);
-  display: inline-flex;
-  height: 46px;
-  justify-content: center;
-  width: 46px;
-}
-
-.header-contact-icons img {
-  display: block;
-  height: 32px;
-  object-fit: contain;
-  width: 32px;
 }
 
 .menu-button {
@@ -663,10 +638,13 @@ footer p {
   border-radius: 8px;
   color: #fff;
   display: inline-flex;
-  font-weight: 800;
+  font-size: 16px;
+  font-weight: 700;
   justify-content: center;
+  line-height: 1.2;
   min-height: 54px;
-  padding: 16px 18px;
+  padding: 14px 18px;
+  text-align: center;
 }
 
 .zalo-action {
@@ -1063,11 +1041,6 @@ footer p {
     max-width: none;
   }
 
-  .header-contact-icons {
-    grid-column: 1 / -1;
-    justify-content: center;
-  }
-
   .hero {
     grid-template-columns: 1fr;
   }
@@ -1099,6 +1072,7 @@ footer p {
 
   .site-header {
     gap: 12px;
+    grid-template-columns: 1fr;
     padding: 14px;
   }
 

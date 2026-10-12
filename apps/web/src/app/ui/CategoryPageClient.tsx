@@ -69,23 +69,6 @@ export default function CategoryPageClient({
             placeholder="Tìm kiếm sản phẩm"
           />
         </label>
-        <div className="header-contact-icons">
-          {data.content.zaloUrl ? (
-            <a href={data.content.zaloUrl} aria-label="Zalo">
-              <img src={data.assets.zaloIcon} alt="" />
-            </a>
-          ) : null}
-          {data.content.facebookUrl ? (
-            <a href={data.content.facebookUrl} aria-label="Facebook">
-              <img src={data.assets.facebookIcon} alt="" />
-            </a>
-          ) : null}
-          {data.content.hotline ? (
-            <a href={`tel:${data.content.hotline}`} aria-label="Số điện thoại">
-              <img src={data.assets.phoneIcon} alt="" />
-            </a>
-          ) : null}
-        </div>
       </header>
 
       <section className="catalog-layout">
