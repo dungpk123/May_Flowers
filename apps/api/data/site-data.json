@@ -1,0 +1,33 @@
+{
+  "assets": {
+    "logo": "/img/logo.png",
+    "background": "/img/background.jpg",
+    "zaloIcon": "/img/icon_zalo.png",
+    "facebookIcon": "/img/icon_facebook.png",
+    "phoneIcon": "/img/icon-dien-thoai.png"
+  },
+  "content": {
+    "brandName": "",
+    "tagline": "",
+    "hotline": "",
+    "zaloUrl": "",
+    "facebookUrl": "",
+    "address": "",
+    "email": "",
+    "heroTitle": "",
+    "heroSubtitle": "",
+    "heroDescription": "",
+    "ctaEyebrow": "",
+    "ctaTitle": "",
+    "ctaDescription": "",
+    "footerTitle": "",
+    "footerDescription": "",
+    "aboutTitle": "",
+    "aboutContent": "",
+    "contactTitle": "",
+    "contactContent": ""
+  },
+  "categories": [],
+  "products": [],
+  "articles": []
+}
