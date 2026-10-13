@@ -60,8 +60,6 @@ export type SiteData = {
   articles: Article[];
 };
 
-const img = (path: string) => `https://365happyflower.vn/wp-content/uploads/${path}`;
-
 export const defaultSiteData: SiteData = {
   assets: {
     logo: "/img/logo.png",
@@ -72,7 +70,7 @@ export const defaultSiteData: SiteData = {
   },
   content: {
     brandName: "Happy Flower",
-    tagline: "Giao hoa toàn quốc trong ngày",
+    tagline: "Giao hoa toàn quốc",
     hotline: "0900 365 365",
     zaloUrl: "https://zalo.me/0900365365",
     facebookUrl: "https://facebook.com",
@@ -96,105 +94,9 @@ export const defaultSiteData: SiteData = {
     contactContent:
       "Bạn có thể liên hệ qua số điện thoại, Zalo hoặc Facebook để được tư vấn mẫu hoa và khu vực giao phù hợp."
   },
-  categories: [
-    { id: 1, name: "Bó hoa", image: img("2026/03/29-250x300.png") },
-    { id: 2, name: "Giỏ trái cây", image: img("2026/03/23-2-250x300.png") },
-    { id: 3, name: "Hoa khai trương", image: img("2025/10/28-4-250x409.png") },
-    { id: 4, name: "Lan hồ điệp", image: img("2026/03/10-6-250x300.png") },
-    { id: 5, name: "Hoa chia buồn", image: img("2025/10/9-3-250x409.png") }
-  ],
-  products: [
-    {
-      id: 101,
-      name: "Bó hoa hồng pastel",
-      category: "Bó hoa",
-      price: 550000,
-      image: img("2026/03/29-250x300.png"),
-      badge: "Bán chạy",
-      description: "Bó hoa hồng phối tone pastel nhẹ nhàng cho sinh nhật và kỷ niệm."
-    },
-    {
-      id: 102,
-      name: "Bó hoa hướng dương",
-      category: "Bó hoa",
-      price: 430000,
-      image: img("2026/03/20-250x300.png"),
-      badge: "Mẫu mới",
-      description: "Bó hoa tươi sáng, phù hợp tặng chúc mừng và động viên."
-    },
-    {
-      id: 103,
-      name: "Bó hoa đỏ sang trọng",
-      category: "Bó hoa",
-      price: 799000,
-      image: img("2026/03/26-250x300.png"),
-      description: "Hoa đỏ chủ đạo, thiết kế nổi bật cho dịp đặc biệt."
-    },
-    {
-      id: 104,
-      name: "Giỏ trái cây TC23",
-      category: "Giỏ trái cây",
-      price: 1100000,
-      image: img("2026/03/23-2-250x300.png"),
-      badge: "Cao cấp",
-      description: "Giỏ trái cây phối hoa nhỏ, lịch sự cho thăm hỏi và biếu tặng."
-    },
-    {
-      id: 105,
-      name: "Giỏ trái cây TC25",
-      category: "Giỏ trái cây",
-      price: 1890000,
-      image: img("2026/03/25-2-250x300.png"),
-      description: "Giỏ trái cây lớn với tone màu ấm, phù hợp quà doanh nghiệp."
-    },
-    {
-      id: 106,
-      name: "Lan hồ điệp vàng",
-      category: "Lan hồ điệp",
-      price: 1450000,
-      image: img("2026/03/10-6-250x300.png"),
-      description: "Chậu lan hồ điệp vàng trang nhã cho khai trương và trang trí."
-    },
-    {
-      id: 107,
-      name: "Kệ hoa khai trương",
-      category: "Hoa khai trương",
-      price: 1650000,
-      image: img("2025/10/28-4-250x409.png"),
-      description: "Kệ hoa chúc mừng nổi bật, phối màu rực rỡ."
-    },
-    {
-      id: 108,
-      name: "Vòng hoa chia buồn",
-      category: "Hoa chia buồn",
-      price: 1200000,
-      image: img("2025/10/9-3-250x409.png"),
-      description: "Thiết kế trang trọng, màu sắc nhã nhặn."
-    }
-  ],
-  articles: [
-    {
-      id: 201,
-      title: "Gợi ý chọn hoa sinh nhật theo tính cách",
-      image: img("2026/03/21-250x300.png"),
-      excerpt: "Mỗi tone hoa mang một cảm xúc riêng, từ nhẹ nhàng đến rực rỡ.",
-      content: "Nên chọn hoa dựa trên màu sắc yêu thích, độ tuổi và thông điệp muốn gửi."
-    },
-    {
-      id: 202,
-      title: "Cách giữ hoa tươi lâu hơn sau khi nhận",
-      image: img("2026/03/22-250x300.png"),
-      excerpt: "Thay nước, cắt gốc và tránh nắng trực tiếp giúp hoa bền hơn.",
-      content: "Bạn nên thay nước mỗi ngày và loại bỏ lá ngập trong nước để hoa tươi lâu."
-    },
-    {
-      id: 203,
-      title: "Khi nào nên tặng giỏ trái cây kèm hoa?",
-      image: img("2026/03/24-2-250x300.png"),
-      excerpt: "Giỏ trái cây kèm hoa phù hợp cho thăm hỏi, cảm ơn và chúc mừng.",
-      content: "Sự kết hợp này tạo cảm giác lịch sự, tinh tế và dễ dùng cho nhiều dịp."
-    }
-  ]
+  categories: [],
+  products: [],
+  articles: []
 };
 
 export const navigationItems = [
