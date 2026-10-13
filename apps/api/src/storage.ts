@@ -1,7 +1,11 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { config } from "dotenv";
-import { Pool, type PoolClient } from "pg";
+import mysql, {
+  type Pool,
+  type PoolConnection,
+  type RowDataPacket
+} from "mysql2/promise";
 import {
   defaultSiteData,
   type Article,
@@ -17,22 +21,17 @@ config({ path: join(process.cwd(), "..", "..", ".env") });
 
 const dataFile = join(__dirname, "..", "data", "site-data.json");
 const databaseUrl = process.env.DATABASE_URL;
+const databaseName = normalizeDatabaseName(process.env.DATABASE_NAME || "shop_flower");
 
-const pool = databaseUrl
-  ? new Pool({
-      connectionString: databaseUrl,
-      ssl:
-        process.env.DATABASE_SSL === "true"
-          ? { rejectUnauthorized: false }
-          : undefined
-    })
-  : null;
+const pool = databaseUrl ? createPool(databaseUrl, databaseName) : null;
 
 let databaseReady = false;
 let databaseAvailable = Boolean(pool);
 
+type Db = Pool | PoolConnection;
+
 export function storageMode() {
-  return databaseAvailable ? "postgresql" : "json-file";
+  return databaseAvailable ? "tidb-mysql" : "json-file";
 }
 
 export async function readSiteData(): Promise<SiteData> {
@@ -40,27 +39,28 @@ export async function readSiteData(): Promise<SiteData> {
 
   try {
     await ensureDatabase();
-    const [assetsResult, contentResult, categoriesResult, productsResult, articlesResult] =
+    const [assetsRows, contentRows, categoryRows, productRows, articleRows] =
       await Promise.all([
-        pool.query<SiteAssets>(
-          'select logo, background, "zaloIcon", "facebookIcon", "phoneIcon" from site_assets where id = 1'
+        queryRows<DbAssetsRow>(
+          pool,
+          "select logo, background, zaloIcon, facebookIcon, phoneIcon from site_assets where id = 1"
         ),
-        pool.query<DbContentRow>("select * from site_content where id = 1"),
-        pool.query<DbCategoryRow>("select * from categories order by id"),
-        pool.query<DbProductRow>("select * from products order by id"),
-        pool.query<DbArticleRow>("select * from articles order by id")
+        queryRows<DbContentRow>(pool, "select * from site_content where id = 1"),
+        queryRows<DbCategoryRow>(pool, "select * from categories order by id"),
+        queryRows<DbProductRow>(pool, "select * from products order by id"),
+        queryRows<DbArticleRow>(pool, "select * from articles order by id")
       ]);
 
     return normalizeSiteData({
-      assets: assetsResult.rows[0] ?? defaultSiteData.assets,
-      content: contentFromRow(contentResult.rows[0]),
-      categories: categoriesResult.rows.map(categoryFromRow),
-      products: productsResult.rows.map(productFromRow),
-      articles: articlesResult.rows.map(articleFromRow)
+      assets: assetsFromRow(assetsRows[0]),
+      content: contentFromRow(contentRows[0]),
+      categories: categoryRows.map(categoryFromRow),
+      products: productRows.map(productFromRow),
+      articles: articleRows.map(articleFromRow)
     });
   } catch (error) {
     databaseAvailable = false;
-    console.warn("PostgreSQL unavailable, falling back to JSON file.", error);
+    console.warn("TiDB/MySQL unavailable, falling back to JSON file.", error);
     return readJsonFile();
   }
 }
@@ -73,10 +73,10 @@ export async function saveSiteData(data: SiteData): Promise<SiteData> {
     return nextData;
   }
 
-  const client = await pool.connect();
+  const client = await pool.getConnection();
   try {
     await ensureDatabase(client);
-    await client.query("begin");
+    await client.beginTransaction();
 
     await upsertAssets(client, nextData.assets);
     await upsertContent(client, nextData.content);
@@ -84,12 +84,12 @@ export async function saveSiteData(data: SiteData): Promise<SiteData> {
     await replaceProducts(client, nextData.products);
     await replaceArticles(client, nextData.articles);
 
-    await client.query("commit");
+    await client.commit();
     return nextData;
   } catch (error) {
-    await client.query("rollback").catch(() => undefined);
+    await client.rollback().catch(() => undefined);
     databaseAvailable = false;
-    console.warn("PostgreSQL save failed, falling back to JSON file.", error);
+    console.warn("TiDB/MySQL save failed, falling back to JSON file.", error);
     saveJsonFile(nextData);
     return nextData;
   } finally {
@@ -97,113 +97,113 @@ export async function saveSiteData(data: SiteData): Promise<SiteData> {
   }
 }
 
-async function ensureDatabase(client?: PoolClient) {
+async function ensureDatabase(client?: PoolConnection) {
   if (!pool || databaseReady) return;
+
+  await ensureDatabaseExists();
 
   const db = client ?? pool;
   await db.query(`
     create table if not exists site_assets (
-      id integer primary key,
-      logo text not null default '',
-      background text not null default '',
-      "zaloIcon" text not null default '',
-      "facebookIcon" text not null default '',
-      "phoneIcon" text not null default '',
-      updated_at timestamptz not null default now()
+      id int primary key,
+      logo text not null,
+      background text not null,
+      zaloIcon text not null,
+      facebookIcon text not null,
+      phoneIcon text not null,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
 
   await db.query(`
     create table if not exists site_content (
-      id integer primary key,
-      brand_name text not null default '',
-      tagline text not null default '',
-      hotline text not null default '',
-      zalo_url text not null default '',
-      facebook_url text not null default '',
-      address text not null default '',
-      email text not null default '',
-      hero_title text not null default '',
-      hero_subtitle text not null default '',
-      hero_description text not null default '',
-      cta_eyebrow text not null default '',
-      cta_title text not null default '',
-      cta_description text not null default '',
-      footer_title text not null default '',
-      footer_description text not null default '',
-      about_title text not null default '',
-      about_content text not null default '',
-      contact_title text not null default '',
-      contact_content text not null default '',
-      updated_at timestamptz not null default now()
+      id int primary key,
+      brand_name text not null,
+      tagline text not null,
+      hotline text not null,
+      zalo_url text not null,
+      facebook_url text not null,
+      address text not null,
+      email text not null,
+      hero_title text not null,
+      hero_subtitle text not null,
+      hero_description text not null,
+      cta_eyebrow text not null,
+      cta_title text not null,
+      cta_description text not null,
+      footer_title text not null,
+      footer_description text not null,
+      about_title text not null,
+      about_content text not null,
+      contact_title text not null,
+      contact_content text not null,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
 
   await db.query(`
     create table if not exists categories (
       id bigint primary key,
-      name text not null default '',
-      image text not null default '',
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
+      name text not null,
+      image text not null,
+      created_at timestamp not null default current_timestamp,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
 
   await db.query(`
     create table if not exists products (
       id bigint primary key,
-      name text not null default '',
-      category text not null default '',
-      price integer,
-      image text not null default '',
-      badge text,
-      description text,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
+      name text not null,
+      category text not null,
+      price int null,
+      image text not null,
+      badge text null,
+      description text null,
+      created_at timestamp not null default current_timestamp,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
 
   await db.query(`
     create table if not exists articles (
       id bigint primary key,
-      title text not null default '',
-      image text not null default '',
-      excerpt text not null default '',
-      content text,
-      created_at timestamptz not null default now(),
-      updated_at timestamptz not null default now()
+      title text not null,
+      image text not null,
+      excerpt text not null,
+      content text null,
+      created_at timestamp not null default current_timestamp,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
 
-  await migrateLegacyJsonData(db);
+  await seedIfEmpty(db);
   databaseReady = true;
 }
 
-async function migrateLegacyJsonData(db: PoolClient | Pool) {
-  const productCount = await db.query<{ count: string }>("select count(*) from products");
-  const hasProducts = Number(productCount.rows[0]?.count ?? 0) > 0;
-  if (hasProducts) return;
+async function ensureDatabaseExists() {
+  if (!databaseUrl) return;
 
-  const legacyExists = await db.query<{ exists: boolean }>(`
-    select exists (
-      select 1
-      from information_schema.tables
-      where table_schema = 'public' and table_name = 'site_data'
-    )
-  `);
-
-  if (!legacyExists.rows[0]?.exists) {
-    await saveSeedRows(db, defaultSiteData);
-    return;
+  const adminPool = createPool(databaseUrl, undefined);
+  try {
+    await adminPool.query(`create database if not exists \`${databaseName}\``);
+  } finally {
+    await adminPool.end();
   }
-
-  const legacy = await db.query<{ data: SiteData }>(
-    "select data from site_data where id = 1"
-  );
-  await saveSeedRows(db, normalizeSiteData(legacy.rows[0]?.data ?? defaultSiteData));
 }
 
-async function saveSeedRows(db: PoolClient | Pool, data: SiteData) {
+async function seedIfEmpty(db: Db) {
+  const rows = await queryRows<{ count: number | string }>(
+    db,
+    "select count(*) as count from products"
+  );
+  const hasProducts = Number(rows[0]?.count ?? 0) > 0;
+  if (hasProducts) return;
+
+  await saveSeedRows(db, readJsonFile());
+}
+
+async function saveSeedRows(db: Db, data: SiteData) {
   await upsertAssets(db, data.assets);
   await upsertContent(db, data.content);
   await replaceCategories(db, data.categories);
@@ -211,18 +211,18 @@ async function saveSeedRows(db: PoolClient | Pool, data: SiteData) {
   await replaceArticles(db, data.articles);
 }
 
-async function upsertAssets(db: PoolClient | Pool, assets: SiteAssets) {
+async function upsertAssets(db: Db, assets: SiteAssets) {
   await db.query(
     `
-      insert into site_assets (id, logo, background, "zaloIcon", "facebookIcon", "phoneIcon", updated_at)
-      values (1, $1, $2, $3, $4, $5, now())
-      on conflict (id) do update set
-        logo = excluded.logo,
-        background = excluded.background,
-        "zaloIcon" = excluded."zaloIcon",
-        "facebookIcon" = excluded."facebookIcon",
-        "phoneIcon" = excluded."phoneIcon",
-        updated_at = now()
+      insert into site_assets (id, logo, background, zaloIcon, facebookIcon, phoneIcon, updated_at)
+      values (1, ?, ?, ?, ?, ?, current_timestamp)
+      on duplicate key update
+        logo = values(logo),
+        background = values(background),
+        zaloIcon = values(zaloIcon),
+        facebookIcon = values(facebookIcon),
+        phoneIcon = values(phoneIcon),
+        updated_at = current_timestamp
     `,
     [
       assets.logo,
@@ -234,7 +234,7 @@ async function upsertAssets(db: PoolClient | Pool, assets: SiteAssets) {
   );
 }
 
-async function upsertContent(db: PoolClient | Pool, content: SiteContent) {
+async function upsertContent(db: Db, content: SiteContent) {
   await db.query(
     `
       insert into site_content (
@@ -244,30 +244,29 @@ async function upsertContent(db: PoolClient | Pool, content: SiteContent) {
         about_content, contact_title, contact_content, updated_at
       )
       values (
-        1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-        $15, $16, $17, $18, $19, now()
+        1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp
       )
-      on conflict (id) do update set
-        brand_name = excluded.brand_name,
-        tagline = excluded.tagline,
-        hotline = excluded.hotline,
-        zalo_url = excluded.zalo_url,
-        facebook_url = excluded.facebook_url,
-        address = excluded.address,
-        email = excluded.email,
-        hero_title = excluded.hero_title,
-        hero_subtitle = excluded.hero_subtitle,
-        hero_description = excluded.hero_description,
-        cta_eyebrow = excluded.cta_eyebrow,
-        cta_title = excluded.cta_title,
-        cta_description = excluded.cta_description,
-        footer_title = excluded.footer_title,
-        footer_description = excluded.footer_description,
-        about_title = excluded.about_title,
-        about_content = excluded.about_content,
-        contact_title = excluded.contact_title,
-        contact_content = excluded.contact_content,
-        updated_at = now()
+      on duplicate key update
+        brand_name = values(brand_name),
+        tagline = values(tagline),
+        hotline = values(hotline),
+        zalo_url = values(zalo_url),
+        facebook_url = values(facebook_url),
+        address = values(address),
+        email = values(email),
+        hero_title = values(hero_title),
+        hero_subtitle = values(hero_subtitle),
+        hero_description = values(hero_description),
+        cta_eyebrow = values(cta_eyebrow),
+        cta_title = values(cta_title),
+        cta_description = values(cta_description),
+        footer_title = values(footer_title),
+        footer_description = values(footer_description),
+        about_title = values(about_title),
+        about_content = values(about_content),
+        contact_title = values(contact_title),
+        contact_content = values(contact_content),
+        updated_at = current_timestamp
     `,
     [
       content.brandName,
@@ -293,28 +292,28 @@ async function upsertContent(db: PoolClient | Pool, content: SiteContent) {
   );
 }
 
-async function replaceCategories(db: PoolClient | Pool, categories: Category[]) {
+async function replaceCategories(db: Db, categories: Category[]) {
   await db.query("delete from categories");
 
   for (const category of categories) {
     await db.query(
       `
         insert into categories (id, name, image, updated_at)
-        values ($1, $2, $3, now())
+        values (?, ?, ?, current_timestamp)
       `,
       [category.id, category.name, category.image]
     );
   }
 }
 
-async function replaceProducts(db: PoolClient | Pool, products: Product[]) {
+async function replaceProducts(db: Db, products: Product[]) {
   await db.query("delete from products");
 
   for (const product of products) {
     await db.query(
       `
         insert into products (id, name, category, price, image, badge, description, updated_at)
-        values ($1, $2, $3, $4, $5, $6, $7, now())
+        values (?, ?, ?, ?, ?, ?, ?, current_timestamp)
       `,
       [
         product.id,
@@ -329,14 +328,14 @@ async function replaceProducts(db: PoolClient | Pool, products: Product[]) {
   }
 }
 
-async function replaceArticles(db: PoolClient | Pool, articles: Article[]) {
+async function replaceArticles(db: Db, articles: Article[]) {
   await db.query("delete from articles");
 
   for (const article of articles) {
     await db.query(
       `
         insert into articles (id, title, image, excerpt, content, updated_at)
-        values ($1, $2, $3, $4, $5, now())
+        values (?, ?, ?, ?, ?, current_timestamp)
       `,
       [
         article.id,
@@ -347,6 +346,42 @@ async function replaceArticles(db: PoolClient | Pool, articles: Article[]) {
       ]
     );
   }
+}
+
+function createPool(url: string, database: string | undefined) {
+  const parsed = new URL(url);
+  const sslDisabled = process.env.DATABASE_SSL === "false";
+
+  return mysql.createPool({
+    host: parsed.hostname,
+    port: parsed.port ? Number(parsed.port) : 4000,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database,
+    waitForConnections: true,
+    connectionLimit: Number(process.env.DB_POOL_LIMIT || 10),
+    queueLimit: 0,
+    charset: "utf8mb4",
+    timezone: "Z",
+    ssl: sslDisabled ? undefined : { rejectUnauthorized: true }
+  });
+}
+
+function normalizeDatabaseName(name: string) {
+  const normalized = name.trim() || "shop_flower";
+  if (!/^[A-Za-z0-9_]+$/.test(normalized)) {
+    throw new Error("DATABASE_NAME can only contain letters, numbers, and underscores.");
+  }
+  return normalized;
+}
+
+async function queryRows<T extends RowDataPacket | object>(
+  db: Db,
+  sql: string,
+  params: unknown[] = []
+) {
+  const [rows] = await db.query(sql, params);
+  return rows as T[];
 }
 
 function readJsonFile(): SiteData {
@@ -379,6 +414,14 @@ function normalizeSiteData(data: SiteData): SiteData {
   };
 }
 
+type DbAssetsRow = {
+  logo: string;
+  background: string;
+  zaloIcon: string;
+  facebookIcon: string;
+  phoneIcon: string;
+};
+
 type DbContentRow = {
   brand_name: string;
   tagline: string;
@@ -402,13 +445,13 @@ type DbContentRow = {
 };
 
 type DbCategoryRow = {
-  id: string;
+  id: string | number;
   name: string;
   image: string;
 };
 
 type DbProductRow = {
-  id: string;
+  id: string | number;
   name: string;
   category: string;
   price: number | null;
@@ -418,12 +461,24 @@ type DbProductRow = {
 };
 
 type DbArticleRow = {
-  id: string;
+  id: string | number;
   title: string;
   image: string;
   excerpt: string;
   content: string | null;
 };
+
+function assetsFromRow(row?: DbAssetsRow): SiteAssets {
+  if (!row) return defaultSiteData.assets;
+
+  return {
+    logo: row.logo,
+    background: row.background,
+    zaloIcon: row.zaloIcon,
+    facebookIcon: row.facebookIcon,
+    phoneIcon: row.phoneIcon
+  };
+}
 
 function contentFromRow(row?: DbContentRow): SiteContent {
   if (!row) return defaultSiteData.content;
