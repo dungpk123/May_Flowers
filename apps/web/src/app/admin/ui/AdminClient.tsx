@@ -1,7 +1,7 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, ImageUp, Info, Plus, Save, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle2, ImageUp, Info, LogOut, Plus, Save, Trash2, X } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
 import { publicApiUrl } from "../../apiConfig";
@@ -18,8 +18,10 @@ type AdminModal = {
   initialValue?: string;
   confirmText?: string;
   cancelText?: string;
+  secondaryText?: string;
   danger?: boolean;
-  onConfirm: (value: string) => void;
+  onConfirm: (value: string) => void | Promise<void>;
+  onSecondary?: () => void;
 };
 
 type AdminToast = {
@@ -46,12 +48,17 @@ const footerFields: Array<{ key: ContentKey; label: string; multiline?: boolean 
 
 export default function AdminClient({ initialData }: { initialData: SiteData }) {
   const [data, setData] = useState<SiteData>(initialData);
+  const [savedData, setSavedData] = useState<SiteData>(initialData);
   const [toast, setToast] = useState<AdminToast | null>(null);
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
   const [modal, setModal] = useState<AdminModal | null>(null);
+  const hasUnsavedChanges = useMemo(
+    () => JSON.stringify(data) !== JSON.stringify(savedData),
+    [data, savedData]
+  );
 
   useEffect(() => {
     if (!toast) return;
@@ -93,11 +100,36 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
     if (!response.ok) {
       showToast("Chưa lưu được. Kiểm tra server rồi thử lại.", "error");
+      return false;
+    }
+
+    const nextData = await response.json();
+    setData(nextData);
+    setSavedData(nextData);
+    showToast("Đã lưu thay đổi.", "success");
+    return true;
+  }
+
+  function exitAdmin() {
+    if (!hasUnsavedChanges) {
+      window.location.href = "/";
       return;
     }
 
-    setData(await response.json());
-    showToast("Đã lưu thay đổi.", "success");
+    setModal({
+      title: "Có thay đổi chưa lưu",
+      message: "Bạn vừa chỉnh sửa nội dung. Bạn có muốn lưu trước khi thoát ra website không?",
+      confirmText: "Lưu rồi thoát",
+      secondaryText: "Thoát không lưu",
+      cancelText: "Ở lại",
+      onConfirm: async () => {
+        const ok = await save();
+        if (ok) window.location.href = "/";
+      },
+      onSecondary: () => {
+        window.location.href = "/";
+      }
+    });
   }
 
   async function uploadImage(
@@ -301,9 +333,14 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <p>Quản trị website</p>
             <h1>Chỉnh sửa nội dung</h1>
           </div>
-          <button type="button" onClick={save}>
-            <Save size={18} /> Lưu
-          </button>
+          <div className="admin-header-actions">
+            <button className="admin-exit-button" type="button" onClick={exitAdmin}>
+              <LogOut size={18} /> Thoát
+            </button>
+            <button type="button" onClick={save}>
+              <Save size={18} /> Lưu
+            </button>
+          </div>
         </header>
 
         <nav className="admin-tabs" aria-label="Mục quản trị">
@@ -752,7 +789,7 @@ function AdminModalDialog({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    modal.onConfirm(value);
+    void modal.onConfirm(value);
     onClose();
   }
 
@@ -774,6 +811,18 @@ function AdminModalDialog({
           <button className="ghost-modal-button" onClick={onClose} type="button">
             {modal.cancelText ?? "Hủy"}
           </button>
+          {modal.secondaryText && modal.onSecondary ? (
+            <button
+              className="ghost-modal-button"
+              onClick={() => {
+                modal.onSecondary?.();
+                onClose();
+              }}
+              type="button"
+            >
+              {modal.secondaryText}
+            </button>
+          ) : null}
           <button className={modal.danger ? "danger-modal-button" : ""} type="submit">
             {modal.confirmText ?? "Xác nhận"}
           </button>

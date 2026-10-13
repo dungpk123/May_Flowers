@@ -277,7 +277,7 @@ function ProductArea({
                 <div className="product-info">
                   <p>{product.category}</p>
                   <h3>{product.name}</h3>
-                  <strong>{product.price ? money.format(product.price) : "Liên hệ"}</strong>
+                  {product.price ? <strong>{money.format(product.price)}</strong> : null}
                   <em>Xem chi tiết</em>
                 </div>
               </a>

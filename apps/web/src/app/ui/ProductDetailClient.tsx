@@ -60,11 +60,11 @@ export default function ProductDetailClient({
         <div className="product-detail-copy">
           <p>{product.category}</p>
           <h1>{product.name}</h1>
-          <strong>{product.price ? money.format(product.price) : "Liên hệ"}</strong>
+          {product.price ? <strong>{money.format(product.price)}</strong> : null}
           {product.description ? <span>{product.description}</span> : null}
 
           <div className="product-detail-panel">
-            <h2>Thông tin dịch vụ</h2>
+            <h2>Tiêu chí của chúng tôi</h2>
             <ul>
               <li>Giao hoa toàn quốc qua hệ thống đối tác địa phương.</li>
               <li>Xác nhận mẫu trước khi giao nếu khách hàng yêu cầu.</li>
@@ -111,7 +111,7 @@ export default function ProductDetailClient({
                 <div className="product-info">
                   <p>{item.category}</p>
                   <h3>{item.name}</h3>
-                  <strong>{item.price ? money.format(item.price) : "Liên hệ"}</strong>
+                  {item.price ? <strong>{money.format(item.price)}</strong> : null}
                   <em>Xem chi tiết</em>
                 </div>
               </a>

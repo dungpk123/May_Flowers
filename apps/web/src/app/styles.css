@@ -1010,6 +1010,17 @@ footer p {
   color: #fff;
 }
 
+.admin-header-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+}
+
+.admin-editor-header .admin-exit-button {
+  background: #eef7ef;
+  color: var(--deep-green);
+}
+
 .admin-toast {
   align-items: start;
   animation: admin-toast-in 0.18s ease-out;
