@@ -1,6 +1,6 @@
 {
   "assets": {
-    "logo": "https://res.cloudinary.com/dbpsdxha/image/upload/v1791885115/shop-flower/uploads/cugdkpl7dix8bhlbuelu.png",
+    "logo": "https://res.cloudinary.com/dbpsdxha/image/upload/v1791888392/shop-flower/uploads/gqqkbxypievjutvfwybx.png",
     "background": "/img/background.jpg",
     "backgroundImages": [
       "/img/background.jpg"
@@ -10,43 +10,45 @@
     "phoneIcon": "/img/icon-dien-thoai.png"
   },
   "content": {
-    "brandName": "May Flowers",
+    "brandName": "Mây Flowers",
     "tagline": "",
-    "hotline": "",
-    "zaloUrl": "",
-    "facebookUrl": "",
-    "address": "Đang cập nhật địa chỉ",
-    "email": "Đang cập nhật email",
+    "hotline": "0832591267",
+    "zaloUrl": "0832591267",
+    "facebookUrl": "facebook.com/dung.nt.2003",
+    "address": "",
+    "email": "",
     "heroTitle": "",
     "heroSubtitle": "",
     "heroDescription": "",
     "ctaEyebrow": "",
     "ctaTitle": "",
     "ctaDescription": "",
-    "footerTitle": "May Flowers",
-    "footerDescription": "Shop hoa và quà tặng. Nội dung footer này đang là dữ liệu tạm và có thể chỉnh sửa trong trang quản trị.",
-    "aboutTitle": "Giới thiệu",
-    "aboutContent": "Nội dung giới thiệu đang được cập nhật.",
-    "contactTitle": "Liên hệ",
-    "contactContent": "Thông tin liên hệ đang được cập nhật."
+    "footerTitle": "",
+    "footerDescription": "",
+    "aboutTitle": "",
+    "aboutContent": "",
+    "contactTitle": "",
+    "contactContent": ""
   },
   "categories": [
     {
-      "id": 1791887977084,
+      "id": 1791885175638,
       "name": "Hoa khai trương",
       "image": ""
     },
     {
-      "id": 1791887977085,
-      "name": "Bó hoa",
-      "image": ""
-    },
-    {
-      "id": 1791887977086,
-      "name": "Giỏ trái cây",
+      "id": 1791885196881,
+      "name": "",
       "image": ""
     }
   ],
-  "products": [],
+  "products": [
+    {
+      "id": 1791885178135,
+      "name": "",
+      "category": "",
+      "image": ""
+    }
+  ],
   "articles": []
 }
