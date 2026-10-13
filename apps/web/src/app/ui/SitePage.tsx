@@ -8,7 +8,7 @@ import {
   Search
 } from "lucide-react";
 import { useMemo, useState } from "react";
-import { type Product, type SiteData } from "@shop-flower/data";
+import { type Category, type Product, type SiteData } from "@shop-flower/data";
 
 export type SiteView = "home" | "about" | "bouquets" | "fruit" | "blog" | "contact";
 
@@ -42,7 +42,7 @@ function phoneUrl(value: string) {
 export default function SitePage({ data, view }: { data: SiteData; view: SiteView }) {
   const [query, setQuery] = useState("");
   const visibleCategories = useMemo(
-    () => data.categories.filter((category) => category.name.trim()),
+    () => sortCategories(data.categories.filter((category) => category.name.trim())),
     [data.categories]
   );
 
@@ -153,7 +153,7 @@ function Header({
   );
 }
 
-function MainNav({ categories }: { categories: Array<{ id: number; name: string }> }) {
+function MainNav({ categories }: { categories: Category[] }) {
   if (categories.length === 0) return null;
 
   return (
@@ -233,7 +233,7 @@ function PageHero({ title, data }: { title: string; data: SiteData }) {
   );
 }
 
-function CategoryGrid({ categories }: { categories: Array<{ id: number; name: string; image: string }> }) {
+function CategoryGrid({ categories }: { categories: Category[] }) {
   if (categories.length === 0) {
     return null;
   }
@@ -243,7 +243,7 @@ function CategoryGrid({ categories }: { categories: Array<{ id: number; name: st
       <SectionTitle title="Danh mục sản phẩm" />
       <section className="category-grid">
         {categories.map((category) => (
-          <a className="category-card" href={`/bo-hoa?category=${category.name}`} key={category.id}>
+          <a className="category-card" href={`/bo-hoa?category=${encodeURIComponent(category.name)}`} key={category.id}>
             {category.image ? <img src={category.image} alt={category.name} /> : null}
             <strong>{category.name}</strong>
           </a>
@@ -435,4 +435,10 @@ function filterProductsByView(products: Product[], view: SiteView) {
   }
 
   return products;
+}
+
+function sortCategories(categories: Category[]) {
+  return [...categories].sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id
+  );
 }

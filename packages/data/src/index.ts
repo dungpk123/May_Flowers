@@ -11,6 +11,8 @@ export type Product = {
 export type Category = {
   id: number;
   name: string;
+  displayTitle: string;
+  sortOrder: number;
   image: string;
 };
 

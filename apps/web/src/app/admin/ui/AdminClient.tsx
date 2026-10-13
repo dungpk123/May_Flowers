@@ -146,7 +146,16 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
         setData({
           ...data,
-          categories: [...data.categories, { id: Date.now(), name, image: "" }]
+          categories: [
+            ...data.categories,
+            {
+              id: Date.now(),
+              name,
+              displayTitle: name,
+              sortOrder: data.categories.length + 1,
+              image: ""
+            }
+          ]
         });
         showToast(`Đã thêm danh mục "${name}". Bấm Lưu để cập nhật website.`, "success");
       }
@@ -479,14 +488,32 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           </div>
           {data.categories.length === 0 ? <p className="admin-empty">Chưa có danh mục.</p> : null}
           <div className="admin-list">
-            {data.categories.map((item, index) => (
+            {sortAdminCategories(data.categories).map((item, index) => (
               <article className="admin-row-card" key={item.id}>
                 <strong>{index + 1}</strong>
-                <Field
-                  label="Tên danh mục"
-                  value={item.name}
-                  onChange={(value) => updateCategory(data, setData, item.id, { name: value })}
-                />
+                <div className="admin-category-fields">
+                  <Field
+                    label="Thứ tự hiển thị"
+                    value={String(item.sortOrder || index + 1)}
+                    onChange={(value) =>
+                      updateCategory(data, setData, item.id, {
+                        sortOrder: Number(value.replace(/\D/g, "")) || index + 1
+                      })
+                    }
+                  />
+                  <Field
+                    label="Tên danh mục"
+                    value={item.name}
+                    onChange={(value) => updateCategory(data, setData, item.id, { name: value })}
+                  />
+                  <Field
+                    label="Tiêu đề khi mở danh mục"
+                    value={item.displayTitle || item.name}
+                    onChange={(value) =>
+                      updateCategory(data, setData, item.id, { displayTitle: value })
+                    }
+                  />
+                </div>
                 <ImageField
                   label="Ảnh"
                   value={item.image}
@@ -554,7 +581,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                     />
                     <SelectField
                       label="Danh mục"
-                      options={data.categories.map((category) => category.name).filter(Boolean)}
+                      options={sortAdminCategories(data.categories).map((category) => category.name).filter(Boolean)}
                       value={item.category}
                       onChange={(value) =>
                         updateProduct(data, setData, item.id, { category: value })
@@ -990,4 +1017,10 @@ function updateArticle(
     ...data,
     articles: data.articles.map((item) => (item.id === id ? { ...item, ...patch } : item))
   });
+}
+
+function sortAdminCategories(categories: Category[]) {
+  return [...categories].sort(
+    (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id
+  );
 }

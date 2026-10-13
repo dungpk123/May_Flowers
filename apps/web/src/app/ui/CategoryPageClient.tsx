@@ -2,7 +2,7 @@
 
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
-import type { Product, SiteData } from "@shop-flower/data";
+import type { Category, Product, SiteData } from "@shop-flower/data";
 import { useLiveSiteData } from "./useLiveSiteData";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -31,6 +31,15 @@ export default function CategoryPageClient({
   const [category, setCategory] = useState(initialCategory ?? "Tất cả");
   const [priceRange, setPriceRange] = useState("Tất cả giá");
   const [sort, setSort] = useState("default");
+  const sortedCategories = useMemo(() => sortCategories(data.categories), [data.categories]);
+  const activeCategory = useMemo(
+    () => sortedCategories.find((item) => item.name === category),
+    [category, sortedCategories]
+  );
+  const sectionTitle =
+    category === "Tất cả"
+      ? "Sản phẩm"
+      : activeCategory?.displayTitle || category;
 
   useEffect(() => {
     if (initialCategory) return;
@@ -97,7 +106,7 @@ export default function CategoryPageClient({
           </div>
 
           <div className="filter-list category-filter-list">
-            {["Tất cả", ...data.categories.map((item) => item.name)].map((item) => (
+            {["Tất cả", ...sortedCategories.map((item) => item.name)].map((item) => (
               <button
                 className={category === item ? "active" : ""}
                 key={item}
@@ -111,6 +120,11 @@ export default function CategoryPageClient({
         </aside>
 
         <div className="catalog-main">
+          <div className="section-title catalog-section-title">
+            <span>{sectionTitle}</span>
+            <span className="section-title-spacer" />
+          </div>
+
           <div className="catalog-toolbar">
             <p>{filteredProducts.length} sản phẩm</p>
             <label>
@@ -133,6 +147,12 @@ export default function CategoryPageClient({
       </section>
     </main>
   );
+}
+
+function sortCategories(categories: Category[]) {
+  return [...categories]
+    .filter((category) => category.name.trim())
+    .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id);
 }
 
 function ProductCard({ product }: { product: Product }) {

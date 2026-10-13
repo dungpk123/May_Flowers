@@ -46,7 +46,7 @@ export async function readSiteData(): Promise<SiteData> {
           "select logo, background, backgroundImages, zaloIcon, facebookIcon, phoneIcon from site_assets where id = 1"
         ),
         queryRows<DbContentRow>(pool, "select * from site_content where id = 1"),
-        queryRows<DbCategoryRow>(pool, "select * from categories order by id"),
+        queryRows<DbCategoryRow>(pool, "select * from categories order by sort_order, id"),
         queryRows<DbProductRow>(pool, "select * from products order by id"),
         queryRows<DbArticleRow>(pool, "select * from articles order by id")
       ]);
@@ -153,11 +153,16 @@ async function ensureDatabase(client?: PoolConnection) {
     create table if not exists categories (
       id bigint primary key,
       name text not null,
+      display_title text null,
       image text not null,
+      sort_order int not null default 0,
       created_at timestamp not null default current_timestamp,
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
+
+  await addColumnIfMissing(db, "categories", "display_title", "text null after name");
+  await addColumnIfMissing(db, "categories", "sort_order", "int not null default 0 after image");
 
   await db.query(`
     create table if not exists products (
@@ -310,10 +315,16 @@ async function replaceCategories(db: Db, categories: Category[]) {
   for (const category of categories) {
     await db.query(
       `
-        insert into categories (id, name, image, updated_at)
-        values (?, ?, ?, current_timestamp)
+        insert into categories (id, name, display_title, image, sort_order, updated_at)
+        values (?, ?, ?, ?, ?, current_timestamp)
       `,
-      [category.id, category.name, category.image]
+      [
+        category.id,
+        category.name,
+        category.displayTitle || category.name,
+        category.image,
+        category.sortOrder
+      ]
     );
   }
 }
@@ -429,7 +440,16 @@ function normalizeSiteData(data: SiteData): SiteData {
       backgroundImages
     },
     content: { ...defaultSiteData.content, ...data.content },
-    categories: data.categories ?? [],
+    categories: (data.categories ?? [])
+      .map((category, index) => {
+        const sortOrder = Number(category.sortOrder);
+        return {
+          ...category,
+          displayTitle: category.displayTitle || category.name,
+          sortOrder: Number.isFinite(sortOrder) && sortOrder > 0 ? sortOrder : index + 1
+        };
+      })
+      .sort((a, b) => a.sortOrder - b.sortOrder || a.id - b.id),
     products: data.products ?? [],
     articles: data.articles ?? []
   };
@@ -469,7 +489,9 @@ type DbContentRow = {
 type DbCategoryRow = {
   id: string | number;
   name: string;
+  display_title?: string | null;
   image: string;
+  sort_order?: string | number | null;
 };
 
 type DbProductRow = {
@@ -569,6 +591,8 @@ function categoryFromRow(row: DbCategoryRow): Category {
   return {
     id: Number(row.id),
     name: row.name,
+    displayTitle: row.display_title || row.name,
+    sortOrder: Number(row.sort_order ?? 0),
     image: row.image
   };
 }
