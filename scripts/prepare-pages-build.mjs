@@ -23,6 +23,7 @@ if (existsSync(buildDir)) {
 
 mkdirSync(buildDir, { recursive: true });
 cpSync(webOut, buildDir, { recursive: true });
+writeFileSync(resolve(buildDir, ".nojekyll"), "", "utf8");
 
 if (domain) {
   writeFileSync(resolve(buildDir, "CNAME"), `${domain}\n`, "utf8");
