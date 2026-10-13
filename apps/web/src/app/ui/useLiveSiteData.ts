@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
-
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+import { publicApiUrl } from "../apiConfig";
 
 export function useLiveSiteData(initialData: SiteData) {
   const [data, setData] = useState(initialData);
@@ -13,7 +12,7 @@ export function useLiveSiteData(initialData: SiteData) {
 
     async function loadLiveData() {
       try {
-        const response = await fetch(`${apiUrl}/site-data`, {
+        const response = await fetch(`${publicApiUrl}/site-data`, {
           cache: "no-store"
         });
         if (!response.ok) return;

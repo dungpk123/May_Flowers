@@ -4,8 +4,9 @@ import { ImageUp, Plus, Save, Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
+import { publicApiUrl } from "../../apiConfig";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const apiUrl = publicApiUrl;
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
 
 type ContentKey = keyof SiteData["content"];
