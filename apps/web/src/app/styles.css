@@ -922,10 +922,14 @@ footer p {
 }
 
 .admin-workspace {
-  background: #edf5ef;
+  background:
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.9), transparent 34%),
+    #edf5ef;
   display: grid;
-  grid-template-columns: minmax(460px, 620px) minmax(520px, 1fr);
+  gap: 22px;
+  grid-template-columns: minmax(480px, 660px) minmax(520px, 1fr);
   min-height: 100vh;
+  padding: 18px;
 }
 
 .admin-workspace.admin-wide {
@@ -933,17 +937,19 @@ footer p {
 }
 
 .admin-editor {
-  background: #fbfcfa;
-  border-right: 1px solid #d8e6d9;
-  height: 100vh;
+  background: rgba(251, 252, 250, 0.94);
+  border: 1px solid #d8e6d9;
+  border-radius: 12px;
+  box-shadow: 0 24px 70px rgba(24, 60, 31, 0.08);
+  height: calc(100vh - 36px);
   overflow: auto;
-  padding: 18px;
+  padding: 20px;
 }
 
 .admin-wide .admin-editor {
-  border-right: 0;
+  border-right: 1px solid #d8e6d9;
   margin: 0 auto;
-  max-width: 1240px;
+  max-width: 1380px;
   width: 100%;
 }
 
@@ -999,14 +1005,86 @@ footer p {
   color: #fff;
 }
 
-.admin-status {
-  background: #fff7df;
-  border: 1px solid #efd281;
-  border-radius: 8px;
-  color: var(--ink);
+.admin-toast {
+  align-items: start;
+  animation: admin-toast-in 0.18s ease-out;
+  background: #fff;
+  border: 1px solid #cfe5d3;
+  border-radius: 12px;
+  box-shadow: 0 22px 70px rgba(13, 33, 17, 0.2);
+  color: var(--deep-green);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  max-width: calc(100vw - 32px);
+  padding: 13px 14px;
+  position: fixed;
+  right: 24px;
+  top: 24px;
+  width: min(390px, calc(100vw - 32px));
+  z-index: 120;
+}
+
+.admin-toast.success {
+  border-color: #b8dec1;
+}
+
+.admin-toast.error {
+  background: #fff8f8;
+  border-color: #ffc8c3;
+}
+
+.admin-toast.info {
+  border-color: #c9dcce;
+}
+
+.admin-toast-icon {
+  align-items: center;
+  background: #eef8f0;
+  border-radius: 999px;
+  color: var(--green);
+  display: inline-flex;
+  height: 34px;
+  justify-content: center;
+  width: 34px;
+}
+
+.admin-toast.error .admin-toast-icon {
+  background: #fff0f0;
+  color: #b42318;
+}
+
+.admin-toast p {
   font-size: 14px;
-  margin: 0 0 12px;
-  padding: 10px 12px;
+  font-weight: 800;
+  line-height: 1.45;
+  margin: 6px 0 0;
+}
+
+.admin-toast button {
+  align-items: center;
+  background: #f3f7f3;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 30px;
+  justify-content: center;
+  padding: 0;
+  width: 30px;
+}
+
+@keyframes admin-toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .admin-modal-backdrop {
@@ -1092,22 +1170,22 @@ footer p {
 .admin-tabs {
   background: #eef7ef;
   border: 1px solid #d8e6d9;
-  border-radius: 8px;
+  border-radius: 10px;
   display: grid;
-  gap: 6px;
+  gap: 8px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 12px;
-  padding: 6px;
+  margin-bottom: 16px;
+  padding: 7px;
 }
 
 .admin-tabs button {
   background: transparent;
   border: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   color: var(--deep-green);
   cursor: pointer;
   font-weight: 800;
-  min-height: 38px;
+  min-height: 42px;
   padding: 0 10px;
 }
 
@@ -1120,15 +1198,15 @@ footer p {
 .admin-panel {
   background: #fff;
   border: 1px solid var(--line);
-  border-radius: 8px;
-  box-shadow: 0 10px 30px rgba(35, 74, 44, 0.05);
-  margin-bottom: 12px;
-  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 18px 46px rgba(35, 74, 44, 0.06);
+  margin-bottom: 16px;
+  padding: 18px;
 }
 
 .admin-panel h2 {
   color: var(--deep-green);
-  font-size: 17px;
+  font-size: 18px;
   margin: 0;
 }
 
@@ -1193,13 +1271,21 @@ footer p {
 .admin-field select {
   background: #fff;
   border: 1px solid #d9e2d9;
-  border-radius: 8px;
+  border-radius: 9px;
   color: var(--ink);
   font-size: 14px;
-  min-height: 38px;
+  min-height: 42px;
   outline: 0;
-  padding: 8px 10px;
+  padding: 9px 12px;
   width: 100%;
+}
+
+.admin-field input:focus,
+.admin-field textarea:focus,
+.admin-field select:focus,
+.admin-input-suffix:focus-within {
+  border-color: var(--green);
+  box-shadow: 0 0 0 3px rgba(68, 142, 74, 0.12);
 }
 
 .admin-input-suffix {
@@ -1255,12 +1341,12 @@ footer p {
 .admin-image-field {
   background: #f8fbf8;
   border: 1px solid #dce8dc;
-  border-radius: 8px;
-  padding: 9px;
+  border-radius: 10px;
+  padding: 10px;
 }
 
 .admin-image-field.compact .admin-image-preview {
-  aspect-ratio: 1.2;
+  aspect-ratio: 4 / 3;
 }
 
 .admin-image-preview {
@@ -1345,21 +1431,22 @@ footer p {
 
 .admin-list {
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .admin-row-card,
 .admin-product-editor {
   align-items: start;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 12px;
   display: grid;
-  gap: 10px;
-  padding: 10px;
+  gap: 14px;
+  padding: 14px;
 }
 
 .admin-row-card {
-  grid-template-columns: 32px minmax(260px, 1fr) 180px 44px;
+  grid-template-columns: 34px minmax(280px, 1fr) 210px 44px;
+  min-height: 160px;
 }
 
 .admin-row-card > strong,
@@ -1377,7 +1464,7 @@ footer p {
 }
 
 .admin-product-editor {
-  grid-template-columns: 32px 180px minmax(0, 1fr) 44px;
+  grid-template-columns: 34px 190px minmax(0, 1fr) 44px;
 }
 
 .admin-product-fields {
@@ -1391,7 +1478,7 @@ footer p {
 }
 
 .delete-button.icon-only {
-  border-radius: 8px;
+  border-radius: 10px;
   height: 40px;
   min-height: 40px;
   padding: 0;
@@ -1678,6 +1765,11 @@ footer p {
     overflow: visible;
   }
 
+  .admin-row-card,
+  .admin-product-editor {
+    grid-template-columns: 34px minmax(0, 1fr) 170px 44px;
+  }
+
   .admin-preview-pane {
     border-top: 1px solid #dce8dc;
   }
@@ -1785,10 +1877,12 @@ footer p {
 
   .admin-workspace {
     display: block;
+    padding: 10px;
   }
 
   .admin-editor,
   .admin-preview-pane {
+    height: auto;
     padding: 14px;
   }
 
@@ -1801,6 +1895,25 @@ footer p {
   .admin-image-grid,
   .preview-product-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-toast {
+    right: 12px;
+    top: 12px;
+  }
+
+  .admin-row-card,
+  .admin-product-editor {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-row-card {
+    min-height: 0;
+  }
+
+  .admin-row-card > strong,
+  .admin-product-number {
+    align-self: start;
   }
 }
 

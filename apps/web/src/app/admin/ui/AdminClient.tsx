@@ -1,6 +1,6 @@
 "use client";
 
-import { ImageUp, Plus, Save, Trash2 } from "lucide-react";
+import { AlertCircle, CheckCircle2, ImageUp, Info, Plus, Save, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
@@ -22,6 +22,11 @@ type AdminModal = {
   onConfirm: (value: string) => void;
 };
 
+type AdminToast = {
+  message: string;
+  tone: "success" | "error" | "info";
+};
+
 const homeFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
   { key: "brandName", label: "Tên thương hiệu" }
 ];
@@ -41,12 +46,23 @@ const footerFields: Array<{ key: ContentKey; label: string; multiline?: boolean 
 
 export default function AdminClient({ initialData }: { initialData: SiteData }) {
   const [data, setData] = useState<SiteData>(initialData);
-  const [status, setStatus] = useState("");
+  const [toast, setToast] = useState<AdminToast | null>(null);
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
   const [modal, setModal] = useState<AdminModal | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+
+    const timer = window.setTimeout(() => setToast(null), 3400);
+    return () => window.clearTimeout(timer);
+  }, [toast]);
+
+  function showToast(message: string, tone: AdminToast["tone"] = "info") {
+    setToast({ message, tone });
+  }
 
   function updateContent(key: ContentKey, value: string) {
     setData({
@@ -60,15 +76,15 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
     if (password === adminPassword) {
       setIsUnlocked(true);
-      setStatus("");
+      setToast(null);
       return;
     }
 
-    setStatus("Mật khẩu không đúng.");
+    showToast("Mật khẩu không đúng.", "error");
   }
 
   async function save() {
-    setStatus("Đang lưu thay đổi...");
+    showToast("Đang lưu thay đổi...", "info");
     const response = await fetch(`${apiUrl}/site-data`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -76,12 +92,12 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     });
 
     if (!response.ok) {
-      setStatus("Chưa lưu được. Kiểm tra server rồi thử lại.");
+      showToast("Chưa lưu được. Kiểm tra server rồi thử lại.", "error");
       return;
     }
 
     setData(await response.json());
-    setStatus("Đã lưu thay đổi.");
+    showToast("Đã lưu thay đổi.", "success");
   }
 
   async function uploadImage(
@@ -91,7 +107,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     fieldId: string
   ) {
     setUploadingField(fieldId);
-    setStatus(previousUrl ? "Đang xóa ảnh cũ và thay ảnh mới..." : "Đang tải ảnh...");
+    showToast(previousUrl ? "Đang xóa ảnh cũ và thay ảnh mới..." : "Đang tải ảnh...", "info");
 
     const formData = new FormData();
     formData.append("file", file);
@@ -105,14 +121,14 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
       const result = await response.json();
       if (!response.ok || !result.url) {
-        setStatus(result.message || result.error || "Chưa thay được ảnh.");
+        showToast(result.message || result.error || "Chưa thay được ảnh.", "error");
         return;
       }
 
       onUploaded(result.url);
-      setStatus("Đã thay ảnh. Bấm Lưu để cập nhật website.");
+      showToast("Đã thay ảnh. Bấm Lưu để cập nhật website.", "success");
     } catch {
-      setStatus("Chưa thay được ảnh. Kiểm tra server rồi thử lại.");
+      showToast("Chưa thay được ảnh. Kiểm tra server rồi thử lại.", "error");
     } finally {
       setUploadingField("");
     }
@@ -132,7 +148,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           ...data,
           categories: [...data.categories, { id: Date.now(), name, image: "" }]
         });
-        setStatus(`Đã thêm danh mục "${name}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã thêm danh mục "${name}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -153,7 +169,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           ...data,
           categories: data.categories.filter((item) => item.id !== category.id)
         });
-        setStatus(`Đã xóa danh mục "${category.name}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã xóa danh mục "${category.name}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -181,7 +197,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             }
           ]
         });
-        setStatus(`Đã thêm sản phẩm "${name}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã thêm sản phẩm "${name}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -198,7 +214,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           ...data,
           products: data.products.filter((item) => item.id !== product.id)
         });
-        setStatus(`Đã xóa sản phẩm "${productName}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã xóa sản phẩm "${productName}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -220,7 +236,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             { id: Date.now(), title, image: "", excerpt: "", content: "" }
           ]
         });
-        setStatus(`Đã thêm bài viết "${title}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã thêm bài viết "${title}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -237,7 +253,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           ...data,
           articles: data.articles.filter((item) => item.id !== article.id)
         });
-        setStatus(`Đã xóa bài viết "${articleTitle}". Bấm Lưu để cập nhật website.`);
+        showToast(`Đã xóa bài viết "${articleTitle}". Bấm Lưu để cập nhật website.`, "success");
       }
     });
   }
@@ -245,6 +261,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   if (!isUnlocked) {
     return (
       <main className="admin-login-page">
+        {toast ? <AdminToastMessage toast={toast} onClose={() => setToast(null)} /> : null}
         <form className="admin-login-card" onSubmit={unlock}>
           <p>Quản trị website</p>
           <h1>Nhập mật khẩu</h1>
@@ -257,7 +274,6 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               value={password}
             />
           </label>
-          {status ? <p className="admin-status">{status}</p> : null}
           <button type="submit">
             <Save size={18} /> Vào trang quản trị
           </button>
@@ -269,6 +285,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
   return (
     <main className={`admin-workspace ${activeSection === "overview" ? "" : "admin-wide"}`}>
+      {toast ? <AdminToastMessage toast={toast} onClose={() => setToast(null)} /> : null}
       <aside className="admin-editor">
         <header className="admin-editor-header">
           <div>
@@ -279,8 +296,6 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <Save size={18} /> Lưu
           </button>
         </header>
-
-        {status ? <p className="admin-status">{status}</p> : null}
 
         <nav className="admin-tabs" aria-label="Mục quản trị">
           <button className={activeSection === "overview" ? "active" : ""} onClick={() => setActiveSection("overview")} type="button">
@@ -366,7 +381,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                           backgroundImages: nextImages
                         }
                       });
-                      setStatus("Đã xóa ảnh nền. Bấm Lưu để cập nhật website.");
+                      showToast("Đã xóa ảnh nền. Bấm Lưu để cập nhật website.", "success");
                     }
                   });
                 }}
@@ -669,6 +684,29 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
       ) : null}
       {modal ? <AdminModalDialog modal={modal} onClose={() => setModal(null)} /> : null}
     </main>
+  );
+}
+
+function AdminToastMessage({
+  toast,
+  onClose
+}: {
+  toast: AdminToast;
+  onClose: () => void;
+}) {
+  const Icon =
+    toast.tone === "success" ? CheckCircle2 : toast.tone === "error" ? AlertCircle : Info;
+
+  return (
+    <div className={`admin-toast ${toast.tone}`} role="status" aria-live="polite">
+      <span className="admin-toast-icon">
+        <Icon size={20} />
+      </span>
+      <p>{toast.message}</p>
+      <button type="button" onClick={onClose} aria-label="Đóng thông báo">
+        <X size={16} />
+      </button>
+    </div>
   );
 }
 
