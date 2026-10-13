@@ -47,6 +47,7 @@ export type SiteContent = {
 export type SiteAssets = {
   logo: string;
   background: string;
+  backgroundImages?: string[];
   zaloIcon: string;
   facebookIcon: string;
   phoneIcon: string;
@@ -64,6 +65,7 @@ export const defaultSiteData: SiteData = {
   assets: {
     logo: "/img/logo.png",
     background: "/img/background.jpg",
+    backgroundImages: ["/img/background.jpg"],
     zaloIcon: "/img/icon_zalo.png",
     facebookIcon: "/img/icon_facebook.png",
     phoneIcon: "/img/icon-dien-thoai.png"
@@ -76,17 +78,16 @@ export const defaultSiteData: SiteData = {
     facebookUrl: "https://facebook.com",
     address: "Hệ thống giao hoa toàn quốc",
     email: "hello@happyflower.vn",
-    heroTitle: "Happy Flower",
-    heroSubtitle: "Đặt hoa online, giao tận nơi trên toàn quốc",
-    heroDescription:
-      "Nhận đặt hoa sinh nhật, hoa khai trương, hoa chia buồn và giỏ trái cây với mạng lưới giao hàng tại nhiều tỉnh thành.",
+    heroTitle: "",
+    heroSubtitle: "",
+    heroDescription: "",
     ctaEyebrow: "Thiết kế riêng",
     ctaTitle: "Tạo bó hoa theo ngân sách và thông điệp của bạn",
     ctaDescription:
       "Chọn tỉnh thành, tone màu, dịp tặng và lời nhắn. Đội ngũ sẽ tư vấn mẫu phù hợp trước khi giao.",
-    footerTitle: "Happy Flower",
+    footerTitle: "May Flowers",
     footerDescription:
-      "Dịch vụ điện hoa toàn quốc với dữ liệu mẫu để bạn tiếp tục chỉnh sửa nội dung, sản phẩm và hình ảnh.",
+      "Dịch vụ đặt hoa và quà tặng, nội dung này có thể chỉnh sửa trong trang quản trị.",
     aboutTitle: "Giới thiệu Happy Flower",
     aboutContent:
       "Happy Flower là website mẫu cho dịch vụ điện hoa toàn quốc, tập trung vào trải nghiệm đặt hoa nhanh, xem sản phẩm rõ ràng và quản lý nội dung dễ dàng.",

@@ -11,11 +11,7 @@ const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
 type ContentKey = keyof SiteData["content"];
 
 const homeFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
-  { key: "brandName", label: "Tên thương hiệu" },
-  { key: "tagline", label: "Dòng nhỏ phía trên" },
-  { key: "heroTitle", label: "Tiêu đề chính" },
-  { key: "heroSubtitle", label: "Tiêu đề phụ" },
-  { key: "heroDescription", label: "Mô tả", multiline: true }
+  { key: "brandName", label: "Tên thương hiệu" }
 ];
 
 const contactFields: Array<{ key: ContentKey; label: string }> = [
@@ -155,9 +151,9 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         <section className="admin-panel">
           <div className="admin-panel-heading">
             <h2>Hình ảnh chính</h2>
-            <p>Chỉ đổi logo và ảnh nền. Icon liên hệ dùng cố định.</p>
+            <p>Thêm nhiều ảnh nền để hiển thị ở phần đầu trang.</p>
           </div>
-          <div className="admin-image-grid">
+          <div className="admin-image-grid single">
             <ImageField
               label="Logo"
               value={data.assets.logo}
@@ -171,27 +167,79 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 )
               }
             />
-            <ImageField
-              label="Ảnh nền"
-              value={data.assets.background}
-              uploading={uploadingField === "asset-background"}
-              onUpload={(file) =>
-                uploadImage(
-                  file,
-                  data.assets.background,
-                  (value) =>
-                    setData({ ...data, assets: { ...data.assets, background: value } }),
-                  "asset-background"
-                )
-              }
-            />
           </div>
+          <BackgroundManager
+            images={data.assets.backgroundImages?.length ? data.assets.backgroundImages : [data.assets.background]}
+            uploadingField={uploadingField}
+            onAdd={(file) =>
+              uploadImage(
+                file,
+                "",
+                (value) => {
+                  const nextImages = [
+                    ...(data.assets.backgroundImages?.length
+                      ? data.assets.backgroundImages
+                      : data.assets.background
+                        ? [data.assets.background]
+                        : []),
+                    value
+                  ];
+                  setData({
+                    ...data,
+                    assets: {
+                      ...data.assets,
+                      background: nextImages[0] ?? "",
+                      backgroundImages: nextImages
+                    }
+                  });
+                },
+                "asset-background-add"
+              )
+            }
+            onRemove={(index) => {
+              const nextImages = (data.assets.backgroundImages?.length
+                ? data.assets.backgroundImages
+                : [data.assets.background]
+              ).filter((_, imageIndex) => imageIndex !== index);
+              setData({
+                ...data,
+                assets: {
+                  ...data.assets,
+                  background: nextImages[0] ?? "",
+                  backgroundImages: nextImages
+                }
+              });
+            }}
+            onReplace={(file, index, previousUrl) =>
+              uploadImage(
+                file,
+                previousUrl,
+                (value) => {
+                  const nextImages = [
+                    ...(data.assets.backgroundImages?.length
+                      ? data.assets.backgroundImages
+                      : [data.assets.background])
+                  ];
+                  nextImages[index] = value;
+                  setData({
+                    ...data,
+                    assets: {
+                      ...data.assets,
+                      background: nextImages[0] ?? "",
+                      backgroundImages: nextImages
+                    }
+                  });
+                },
+                `asset-background-${index}`
+              )
+            }
+          />
         </section>
 
         <section className="admin-panel">
           <div className="admin-panel-heading">
             <h2>Nội dung trang chủ</h2>
-            <p>Nhập đến đâu, preview bên phải đổi đến đó.</p>
+            <p>Tên thương hiệu dùng cho footer và thông tin hệ thống.</p>
           </div>
           <div className="admin-grid compact">
             {homeFields.map((field) => (
@@ -479,7 +527,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         <header className="admin-preview-header">
           <div>
             <p>Preview trực tiếp</p>
-            <h2>{data.content.brandName || "Website hoa"}</h2>
+            <h2>Trang chủ</h2>
           </div>
           <a href="/" target="_blank">
             Xem website
@@ -577,6 +625,66 @@ function ImageField({
         />
         <ImageUp size={16} />
         {uploading ? "Đang thay..." : "Chọn ảnh"}
+      </label>
+    </div>
+  );
+}
+
+function BackgroundManager({
+  images,
+  uploadingField,
+  onAdd,
+  onReplace,
+  onRemove
+}: {
+  images: string[];
+  uploadingField: string;
+  onAdd: (file: File) => void;
+  onReplace: (file: File, index: number, previousUrl: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  return (
+    <div className="admin-background-manager">
+      <div className="admin-background-list">
+        {images.filter(Boolean).map((image, index) => (
+          <div className="admin-background-item" key={`${image}-${index}`}>
+            <img src={image} alt="" />
+            <div>
+              <label className="admin-upload-button">
+                <input
+                  accept="image/*"
+                  disabled={uploadingField === `asset-background-${index}`}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (file) onReplace(file, index, image);
+                    event.target.value = "";
+                  }}
+                  type="file"
+                />
+                <ImageUp size={16} />
+                {uploadingField === `asset-background-${index}` ? "Đang thay..." : "Thay ảnh"}
+              </label>
+              <button className="delete-button" type="button" onClick={() => onRemove(index)}>
+                <Trash2 size={16} /> Xóa
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <label className="admin-upload-button add-background">
+        <input
+          accept="image/*"
+          disabled={uploadingField === "asset-background-add"}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onAdd(file);
+            event.target.value = "";
+          }}
+          type="file"
+        />
+        <Plus size={16} />
+        {uploadingField === "asset-background-add" ? "Đang thêm..." : "Thêm ảnh nền"}
       </label>
     </div>
   );

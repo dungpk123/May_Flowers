@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Search
 } from "lucide-react";
+import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { type Product, type SiteData } from "@shop-flower/data";
 
@@ -18,9 +19,16 @@ const money = new Intl.NumberFormat("vi-VN", {
 
 export default function SitePage({ data, view }: { data: SiteData; view: SiteView }) {
   const [query, setQuery] = useState("");
+  const visibleCategories = useMemo(
+    () => data.categories.filter((category) => category.name.trim()),
+    [data.categories]
+  );
 
   const filteredProducts = useMemo(() => {
-    const baseProducts = filterProductsByView(data.products, view);
+    const validProducts = data.products.filter(
+      (product) => product.name.trim() || product.image.trim()
+    );
+    const baseProducts = filterProductsByView(validProducts, view);
     const q = query.trim().toLowerCase();
     if (!q) return baseProducts;
 
@@ -34,20 +42,19 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
   return (
     <main>
       <Header data={data} query={query} setQuery={setQuery} />
-      <MainNav />
+      <MainNav categories={visibleCategories} />
 
       {view === "home" ? (
         <>
           <Hero data={data} />
           <FloatingContact data={data} />
-          <CategoryGrid data={data} />
+          <CategoryGrid categories={visibleCategories} />
           <ProductArea
             products={filteredProducts}
             title="Sản phẩm"
           />
           <Cta data={data} />
           <ArticleGrid data={data} compact />
-          <Benefits />
         </>
       ) : null}
 
@@ -124,33 +131,41 @@ function Header({
   );
 }
 
-function MainNav() {
-  return null;
+function MainNav({ categories }: { categories: Array<{ id: number; name: string }> }) {
+  if (categories.length === 0) return null;
+
+  return (
+    <nav className="main-nav category-nav">
+      {categories.map((category) => (
+        <a href={`/bo-hoa?category=${encodeURIComponent(category.name)}`} key={category.id}>
+          {category.name}
+        </a>
+      ))}
+    </nav>
+  );
 }
 
 function Hero({ data }: { data: SiteData }) {
+  const backgrounds = data.assets.backgroundImages?.length
+    ? data.assets.backgroundImages
+    : [data.assets.background];
+
   return (
-    <section
-      className="hero"
-      style={{
-        backgroundImage: `linear-gradient(90deg, rgba(35,74,44,.88), rgba(73,137,73,.45)), url(${data.assets.background})`
-      }}
-    >
-      <div className="hero-copy">
-        {data.content.tagline ? <p>{data.content.tagline}</p> : null}
-        <h1>{data.content.heroTitle || data.content.brandName || "Website hoa tươi"}</h1>
-        {data.content.heroSubtitle ? <h2>{data.content.heroSubtitle}</h2> : null}
-        {data.content.heroDescription ? <span>{data.content.heroDescription}</span> : null}
-        <div className="hero-actions">
-          <a className="primary-action" href="#products">
-            Xem sản phẩm <ArrowRight size={18} />
-          </a>
-          {data.content.hotline ? (
-            <a className="ghost-action" href={`tel:${data.content.hotline}`}>
-              Gọi tư vấn
-            </a>
-          ) : null}
-        </div>
+    <section className="hero hero-gallery" style={{ "--hero-count": backgrounds.length } as CSSProperties}>
+      <div className="hero-backgrounds">
+        {backgrounds.map((image, index) => (
+          <img
+            alt=""
+            key={`${image}-${index}`}
+            src={image}
+            style={{ animationDelay: `${index * 5}s` }}
+          />
+        ))}
+      </div>
+      <div className="hero-actions">
+        <a className="primary-action" href="#products">
+          Xem sản phẩm <ArrowRight size={18} />
+        </a>
       </div>
     </section>
   );
@@ -161,7 +176,7 @@ function PageHero({ title, data }: { title: string; data: SiteData }) {
     <section
       className="page-hero"
       style={{
-        backgroundImage: `linear-gradient(90deg, rgba(35,74,44,.86), rgba(35,74,44,.28)), url(${data.assets.background})`
+        backgroundImage: `url(${data.assets.background})`
       }}
     >
       <h1>{title}</h1>
@@ -169,8 +184,8 @@ function PageHero({ title, data }: { title: string; data: SiteData }) {
   );
 }
 
-function CategoryGrid({ data }: { data: SiteData }) {
-  if (data.categories.length === 0) {
+function CategoryGrid({ categories }: { categories: Array<{ id: number; name: string; image: string }> }) {
+  if (categories.length === 0) {
     return null;
   }
 
@@ -178,9 +193,9 @@ function CategoryGrid({ data }: { data: SiteData }) {
     <>
       <SectionTitle title="Danh mục sản phẩm" />
       <section className="category-grid">
-        {data.categories.map((category) => (
+        {categories.map((category) => (
           <a className="category-card" href={`/bo-hoa?category=${category.name}`} key={category.id}>
-            <img src={category.image} alt={category.name} />
+            {category.image ? <img src={category.image} alt={category.name} /> : null}
             <strong>{category.name}</strong>
           </a>
         ))}
@@ -289,41 +304,6 @@ function SectionTitle({ title }: { title: string }) {
       </span>
       <span className="section-title-spacer" />
     </div>
-  );
-}
-
-function Benefits() {
-  return (
-    <section className="benefits">
-      <article>
-        <span>01</span>
-        <div>
-          <strong>Giao nhanh 2H</strong>
-          <p>Hỗ trợ giao hoa trong ngày tại khu vực nội thành.</p>
-        </div>
-      </article>
-      <article>
-        <span>02</span>
-        <div>
-          <strong>Hoa tươi mỗi ngày</strong>
-          <p>Chọn lọc hoa mới, giữ dáng đẹp trước khi giao.</p>
-        </div>
-      </article>
-      <article>
-        <span>03</span>
-        <div>
-          <strong>Thiết kế theo yêu cầu</strong>
-          <p>Phối màu theo dịp tặng, ngân sách và lời nhắn.</p>
-        </div>
-      </article>
-      <article>
-        <span>04</span>
-        <div>
-          <strong>Hỗ trợ 24/7</strong>
-          <p>Tư vấn chọn mẫu và xác nhận đơn hàng nhanh.</p>
-        </div>
-      </article>
-    </section>
   );
 }
 

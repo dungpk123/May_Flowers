@@ -43,7 +43,7 @@ export async function readSiteData(): Promise<SiteData> {
       await Promise.all([
         queryRows<DbAssetsRow>(
           pool,
-          "select logo, background, zaloIcon, facebookIcon, phoneIcon from site_assets where id = 1"
+          "select logo, background, backgroundImages, zaloIcon, facebookIcon, phoneIcon from site_assets where id = 1"
         ),
         queryRows<DbContentRow>(pool, "select * from site_content where id = 1"),
         queryRows<DbCategoryRow>(pool, "select * from categories order by id"),
@@ -108,12 +108,20 @@ async function ensureDatabase(client?: PoolConnection) {
       id int primary key,
       logo text not null,
       background text not null,
+      backgroundImages json null,
       zaloIcon text not null,
       facebookIcon text not null,
       phoneIcon text not null,
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
+
+  await addColumnIfMissing(
+    db,
+    "site_assets",
+    "backgroundImages",
+    "json null after background"
+  );
 
   await db.query(`
     create table if not exists site_content (
@@ -214,11 +222,14 @@ async function saveSeedRows(db: Db, data: SiteData) {
 async function upsertAssets(db: Db, assets: SiteAssets) {
   await db.query(
     `
-      insert into site_assets (id, logo, background, zaloIcon, facebookIcon, phoneIcon, updated_at)
-      values (1, ?, ?, ?, ?, ?, current_timestamp)
+      insert into site_assets (
+        id, logo, background, backgroundImages, zaloIcon, facebookIcon, phoneIcon, updated_at
+      )
+      values (1, ?, ?, ?, ?, ?, ?, current_timestamp)
       on duplicate key update
         logo = values(logo),
         background = values(background),
+        backgroundImages = values(backgroundImages),
         zaloIcon = values(zaloIcon),
         facebookIcon = values(facebookIcon),
         phoneIcon = values(phoneIcon),
@@ -227,6 +238,7 @@ async function upsertAssets(db: Db, assets: SiteAssets) {
     [
       assets.logo,
       assets.background,
+      JSON.stringify(assets.backgroundImages?.length ? assets.backgroundImages : [assets.background]),
       assets.zaloIcon,
       assets.facebookIcon,
       assets.phoneIcon
@@ -403,10 +415,19 @@ function saveJsonFile(data: SiteData) {
 }
 
 function normalizeSiteData(data: SiteData): SiteData {
+  const assets = { ...defaultSiteData.assets, ...data.assets };
+  const backgroundImages =
+    assets.backgroundImages?.filter((item) => item.trim().length > 0) ??
+    (assets.background ? [assets.background] : []);
+
   return {
     ...defaultSiteData,
     ...data,
-    assets: { ...defaultSiteData.assets, ...data.assets },
+    assets: {
+      ...assets,
+      background: backgroundImages[0] ?? assets.background,
+      backgroundImages
+    },
     content: { ...defaultSiteData.content, ...data.content },
     categories: data.categories ?? [],
     products: data.products ?? [],
@@ -417,6 +438,7 @@ function normalizeSiteData(data: SiteData): SiteData {
 type DbAssetsRow = {
   logo: string;
   background: string;
+  backgroundImages?: string | null;
   zaloIcon: string;
   facebookIcon: string;
   phoneIcon: string;
@@ -474,10 +496,47 @@ function assetsFromRow(row?: DbAssetsRow): SiteAssets {
   return {
     logo: row.logo,
     background: row.background,
+    backgroundImages: parseBackgroundImages(row.backgroundImages, row.background),
     zaloIcon: row.zaloIcon,
     facebookIcon: row.facebookIcon,
     phoneIcon: row.phoneIcon
   };
+}
+
+async function addColumnIfMissing(
+  db: Db,
+  table: string,
+  column: string,
+  definition: string
+) {
+  const rows = await queryRows<{ count: number | string }>(
+    db,
+    `
+      select count(*) as count
+      from information_schema.columns
+      where table_schema = ? and table_name = ? and column_name = ?
+    `,
+    [databaseName, table, column]
+  );
+
+  if (Number(rows[0]?.count ?? 0) > 0) return;
+
+  await db.query(`alter table \`${table}\` add column \`${column}\` ${definition}`);
+}
+
+function parseBackgroundImages(value: string | null | undefined, fallback: string) {
+  if (!value) return fallback ? [fallback] : [];
+
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((item): item is string => typeof item === "string" && item.length > 0);
+    }
+  } catch {
+    return fallback ? [fallback] : [];
+  }
+
+  return fallback ? [fallback] : [];
 }
 
 function contentFromRow(row?: DbContentRow): SiteContent {
