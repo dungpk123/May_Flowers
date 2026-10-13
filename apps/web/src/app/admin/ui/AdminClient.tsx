@@ -1,7 +1,7 @@
 "use client";
 
-import { Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { ImageUp, Plus, Save, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
@@ -13,6 +13,8 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
+
+  const featuredProducts = useMemo(() => data.products.slice(0, 4), [data.products]);
 
   function unlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,7 +42,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     }
 
     setData(await response.json());
-    setStatus("Đã lưu. Quay lại trang chủ để xem thay đổi.");
+    setStatus("Đã lưu dữ liệu vào TiDB.");
   }
 
   async function uploadImage(file: File, onUploaded: (url: string) => void, fieldId: string) {
@@ -63,7 +65,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
       }
 
       onUploaded(result.url);
-      setStatus("Đã upload ảnh. Nhớ bấm Lưu thay đổi để ghi vào database.");
+      setStatus("Đã upload ảnh. Bấm Lưu thay đổi để ghi vào TiDB.");
     } catch {
       setStatus("Upload ảnh thất bại. Kiểm tra API NestJS và Cloudinary.");
     } finally {
@@ -80,10 +82,10 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           <label className="admin-field">
             <span>Mật khẩu</span>
             <input
+              autoFocus
+              onChange={(event) => setPassword(event.target.value)}
               type="password"
               value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoFocus
             />
           </label>
           {status ? <p className="admin-status">{status}</p> : null}
@@ -97,257 +99,314 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   return (
-    <main className="admin-page">
-      <header className="admin-header">
-        <div>
-          <p>Quản trị website</p>
-          <h1>Chỉnh sửa dữ liệu trang</h1>
-        </div>
-        <div className="admin-actions">
-          <a href="/">Xem website</a>
+    <main className="admin-workspace">
+      <aside className="admin-editor">
+        <header className="admin-editor-header">
+          <div>
+            <p>Quản trị website</p>
+            <h1>Chỉnh sửa nội dung</h1>
+          </div>
           <button type="button" onClick={save}>
-            <Save size={18} /> Lưu thay đổi
+            <Save size={18} /> Lưu
           </button>
-        </div>
-      </header>
+        </header>
 
-      {status ? <p className="admin-status">{status}</p> : null}
+        {status ? <p className="admin-status">{status}</p> : null}
 
-      <section className="admin-panel">
-        <h2>Logo, background, icon</h2>
-        <div className="admin-grid">
-          <Field
-            label="Logo"
-            value={data.assets.logo}
-            onChange={(value) => setData({ ...data, assets: { ...data.assets, logo: value } })}
-            uploadId="asset-logo"
-            uploading={uploadingField === "asset-logo"}
-            onUpload={(file) =>
-              uploadImage(
-                file,
-                (value) => setData({ ...data, assets: { ...data.assets, logo: value } }),
-                "asset-logo"
-              )
-            }
-          />
-          <Field
-            label="Background"
-            value={data.assets.background}
-            onChange={(value) =>
-              setData({ ...data, assets: { ...data.assets, background: value } })
-            }
-            uploadId="asset-background"
-            uploading={uploadingField === "asset-background"}
-            onUpload={(file) =>
-              uploadImage(
-                file,
-                (value) => setData({ ...data, assets: { ...data.assets, background: value } }),
-                "asset-background"
-              )
-            }
-          />
-          <Field
-            label="Icon Zalo"
-            value={data.assets.zaloIcon}
-            onChange={(value) =>
-              setData({ ...data, assets: { ...data.assets, zaloIcon: value } })
-            }
-          />
-          <Field
-            label="Icon Facebook"
-            value={data.assets.facebookIcon}
-            onChange={(value) =>
-              setData({ ...data, assets: { ...data.assets, facebookIcon: value } })
-            }
-          />
-          <Field
-            label="Icon điện thoại"
-            value={data.assets.phoneIcon}
-            onChange={(value) =>
-              setData({ ...data, assets: { ...data.assets, phoneIcon: value } })
-            }
-          />
+        <section className="admin-panel">
+          <h2>Hình ảnh thương hiệu</h2>
+          <div className="admin-image-grid">
+            <ImageField
+              label="Logo"
+              value={data.assets.logo}
+              uploading={uploadingField === "asset-logo"}
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => setData({ ...data, assets: { ...data.assets, logo: value } }),
+                  "asset-logo"
+                )
+              }
+            />
+            <ImageField
+              label="Background"
+              value={data.assets.background}
+              uploading={uploadingField === "asset-background"}
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) =>
+                    setData({ ...data, assets: { ...data.assets, background: value } }),
+                  "asset-background"
+                )
+              }
+            />
+            <ImageField
+              label="Icon Zalo"
+              value={data.assets.zaloIcon}
+              uploading={uploadingField === "asset-zalo"}
+              compact
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => setData({ ...data, assets: { ...data.assets, zaloIcon: value } }),
+                  "asset-zalo"
+                )
+              }
+            />
+            <ImageField
+              label="Icon Facebook"
+              value={data.assets.facebookIcon}
+              uploading={uploadingField === "asset-facebook"}
+              compact
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) =>
+                    setData({ ...data, assets: { ...data.assets, facebookIcon: value } }),
+                  "asset-facebook"
+                )
+              }
+            />
+            <ImageField
+              label="Icon điện thoại"
+              value={data.assets.phoneIcon}
+              uploading={uploadingField === "asset-phone"}
+              compact
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => setData({ ...data, assets: { ...data.assets, phoneIcon: value } }),
+                  "asset-phone"
+                )
+              }
+            />
+          </div>
+        </section>
+
+        <section className="admin-panel">
+          <h2>Nội dung chính</h2>
+          <div className="admin-grid">
+            {Object.entries(data.content).map(([key, value]) => (
+              <Field
+                key={key}
+                label={labelForContent(key)}
+                value={value}
+                multiline={
+                  key.toLowerCase().includes("content") ||
+                  key.toLowerCase().includes("description")
+                }
+                onChange={(nextValue) =>
+                  setData({
+                    ...data,
+                    content: { ...data.content, [key]: nextValue }
+                  })
+                }
+              />
+            ))}
+          </div>
+        </section>
+
+        <CollectionPanel
+          title="Danh mục"
+          items={data.categories}
+          addLabel="Thêm danh mục"
+          onAdd={() =>
+            setData({
+              ...data,
+              categories: [...data.categories, { id: Date.now(), name: "", image: "" }]
+            })
+          }
+          onRemove={(id) =>
+            setData({ ...data, categories: data.categories.filter((item) => item.id !== id) })
+          }
+          render={(item) => (
+            <>
+              <Field
+                label="Tên danh mục"
+                value={item.name}
+                onChange={(value) => updateCategory(data, setData, item.id, { name: value })}
+              />
+              <ImageField
+                label="Ảnh danh mục"
+                value={item.image}
+                uploading={uploadingField === `category-${item.id}`}
+                onUpload={(file) =>
+                  uploadImage(
+                    file,
+                    (value) => updateCategory(data, setData, item.id, { image: value }),
+                    `category-${item.id}`
+                  )
+                }
+              />
+            </>
+          )}
+        />
+
+        <CollectionPanel
+          title="Sản phẩm"
+          items={data.products}
+          addLabel="Thêm sản phẩm"
+          onAdd={() =>
+            setData({
+              ...data,
+              products: [
+                ...data.products,
+                { id: Date.now(), name: "", category: "", image: "", price: undefined }
+              ]
+            })
+          }
+          onRemove={(id) =>
+            setData({ ...data, products: data.products.filter((item) => item.id !== id) })
+          }
+          render={(item) => (
+            <>
+              <Field
+                label="Tên sản phẩm"
+                value={item.name}
+                onChange={(value) => updateProduct(data, setData, item.id, { name: value })}
+              />
+              <Field
+                label="Danh mục"
+                value={item.category}
+                onChange={(value) => updateProduct(data, setData, item.id, { category: value })}
+              />
+              <Field
+                label="Giá"
+                value={item.price ? String(item.price) : ""}
+                onChange={(value) =>
+                  updateProduct(data, setData, item.id, {
+                    price: value ? Number(value) : undefined
+                  })
+                }
+              />
+              <ImageField
+                label="Ảnh sản phẩm"
+                value={item.image}
+                uploading={uploadingField === `product-${item.id}`}
+                onUpload={(file) =>
+                  uploadImage(
+                    file,
+                    (value) => updateProduct(data, setData, item.id, { image: value }),
+                    `product-${item.id}`
+                  )
+                }
+              />
+              <Field
+                label="Nhãn"
+                value={item.badge ?? ""}
+                onChange={(value) => updateProduct(data, setData, item.id, { badge: value })}
+              />
+              <Field
+                label="Mô tả"
+                value={item.description ?? ""}
+                multiline
+                onChange={(value) =>
+                  updateProduct(data, setData, item.id, { description: value })
+                }
+              />
+            </>
+          )}
+        />
+
+        <CollectionPanel
+          title="Blog"
+          items={data.articles}
+          addLabel="Thêm bài viết"
+          onAdd={() =>
+            setData({
+              ...data,
+              articles: [
+                ...data.articles,
+                { id: Date.now(), title: "", image: "", excerpt: "", content: "" }
+              ]
+            })
+          }
+          onRemove={(id) =>
+            setData({ ...data, articles: data.articles.filter((item) => item.id !== id) })
+          }
+          render={(item) => (
+            <>
+              <Field
+                label="Tiêu đề"
+                value={item.title}
+                onChange={(value) => updateArticle(data, setData, item.id, { title: value })}
+              />
+              <ImageField
+                label="Ảnh bài viết"
+                value={item.image}
+                uploading={uploadingField === `article-${item.id}`}
+                onUpload={(file) =>
+                  uploadImage(
+                    file,
+                    (value) => updateArticle(data, setData, item.id, { image: value }),
+                    `article-${item.id}`
+                  )
+                }
+              />
+              <Field
+                label="Tóm tắt"
+                value={item.excerpt}
+                multiline
+                onChange={(value) => updateArticle(data, setData, item.id, { excerpt: value })}
+              />
+              <Field
+                label="Nội dung"
+                value={item.content ?? ""}
+                multiline
+                onChange={(value) => updateArticle(data, setData, item.id, { content: value })}
+              />
+            </>
+          )}
+        />
+      </aside>
+
+      <section className="admin-preview-pane">
+        <header className="admin-preview-header">
+          <div>
+            <p>Preview</p>
+            <h2>{data.content.brandName || "Website hoa"}</h2>
+          </div>
+          <a href="/" target="_blank">
+            Xem website
+          </a>
+        </header>
+
+        <div className="admin-preview-card">
+          <div className="preview-topbar">
+            {data.assets.logo ? <img src={data.assets.logo} alt="" /> : <span>Logo</span>}
+            <div />
+          </div>
+          <div
+            className="preview-hero"
+            style={{
+              backgroundImage: data.assets.background
+                ? `linear-gradient(90deg, rgba(35,74,44,.86), rgba(73,137,73,.35)), url(${data.assets.background})`
+                : undefined
+            }}
+          >
+            <p>{data.content.tagline || "Dòng mô tả ngắn"}</p>
+            <h3>{data.content.heroTitle || data.content.brandName || "Tên thương hiệu"}</h3>
+            <strong>{data.content.heroSubtitle || "Phụ đề hero"}</strong>
+          </div>
+          <div className="preview-products">
+            <div className="preview-section-title">Sản phẩm</div>
+            {featuredProducts.length > 0 ? (
+              <div className="preview-product-grid">
+                {featuredProducts.map((product) => (
+                  <article key={product.id}>
+                    {product.image ? <img src={product.image} alt="" /> : <div />}
+                    <h4>{product.name || "Tên sản phẩm"}</h4>
+                    <p>{product.price ? `${product.price.toLocaleString("vi-VN")} đ` : "Liên hệ"}</p>
+                  </article>
+                ))}
+              </div>
+            ) : (
+              <p className="preview-empty">Chưa có sản phẩm. Thêm sản phẩm ở cột quản trị.</p>
+            )}
+          </div>
         </div>
       </section>
-
-      <section className="admin-panel">
-        <h2>Nội dung chính</h2>
-        <div className="admin-grid">
-          {Object.entries(data.content).map(([key, value]) => (
-            <Field
-              key={key}
-              label={labelForContent(key)}
-              value={value}
-              multiline={key.toLowerCase().includes("content") || key.toLowerCase().includes("description")}
-              onChange={(nextValue) =>
-                setData({
-                  ...data,
-                  content: { ...data.content, [key]: nextValue }
-                })
-              }
-            />
-          ))}
-        </div>
-      </section>
-
-      <CollectionPanel
-        title="Danh mục"
-        items={data.categories}
-        addLabel="Thêm danh mục"
-        onAdd={() =>
-          setData({
-            ...data,
-            categories: [...data.categories, { id: Date.now(), name: "", image: "" }]
-          })
-        }
-        onRemove={(id) =>
-          setData({ ...data, categories: data.categories.filter((item) => item.id !== id) })
-        }
-        render={(item) => (
-          <>
-            <Field
-              label="Tên danh mục"
-              value={item.name}
-              onChange={(value) => updateCategory(data, setData, item.id, { name: value })}
-            />
-            <Field
-              label="Ảnh"
-              value={item.image}
-              onChange={(value) => updateCategory(data, setData, item.id, { image: value })}
-              uploadId={`category-${item.id}`}
-              uploading={uploadingField === `category-${item.id}`}
-              onUpload={(file) =>
-                uploadImage(
-                  file,
-                  (value) => updateCategory(data, setData, item.id, { image: value }),
-                  `category-${item.id}`
-                )
-              }
-            />
-          </>
-        )}
-      />
-
-      <CollectionPanel
-        title="Sản phẩm / hàng"
-        items={data.products}
-        addLabel="Thêm sản phẩm"
-        onAdd={() =>
-          setData({
-            ...data,
-            products: [
-              ...data.products,
-              { id: Date.now(), name: "", category: "", image: "", price: undefined }
-            ]
-          })
-        }
-        onRemove={(id) =>
-          setData({ ...data, products: data.products.filter((item) => item.id !== id) })
-        }
-        render={(item) => (
-          <>
-            <Field
-              label="Tên sản phẩm"
-              value={item.name}
-              onChange={(value) => updateProduct(data, setData, item.id, { name: value })}
-            />
-            <Field
-              label="Danh mục"
-              value={item.category}
-              onChange={(value) => updateProduct(data, setData, item.id, { category: value })}
-            />
-            <Field
-              label="Giá"
-              value={item.price ? String(item.price) : ""}
-              onChange={(value) =>
-                updateProduct(data, setData, item.id, {
-                  price: value ? Number(value) : undefined
-                })
-              }
-            />
-            <Field
-              label="Ảnh"
-              value={item.image}
-              onChange={(value) => updateProduct(data, setData, item.id, { image: value })}
-              uploadId={`product-${item.id}`}
-              uploading={uploadingField === `product-${item.id}`}
-              onUpload={(file) =>
-                uploadImage(
-                  file,
-                  (value) => updateProduct(data, setData, item.id, { image: value }),
-                  `product-${item.id}`
-                )
-              }
-            />
-            <Field
-              label="Nhãn"
-              value={item.badge ?? ""}
-              onChange={(value) => updateProduct(data, setData, item.id, { badge: value })}
-            />
-            <Field
-              label="Mô tả"
-              value={item.description ?? ""}
-              multiline
-              onChange={(value) =>
-                updateProduct(data, setData, item.id, { description: value })
-              }
-            />
-          </>
-        )}
-      />
-
-      <CollectionPanel
-        title="Blog"
-        items={data.articles}
-        addLabel="Thêm bài viết"
-        onAdd={() =>
-          setData({
-            ...data,
-            articles: [
-              ...data.articles,
-              { id: Date.now(), title: "", image: "", excerpt: "", content: "" }
-            ]
-          })
-        }
-        onRemove={(id) =>
-          setData({ ...data, articles: data.articles.filter((item) => item.id !== id) })
-        }
-        render={(item) => (
-          <>
-            <Field
-              label="Tiêu đề"
-              value={item.title}
-              onChange={(value) => updateArticle(data, setData, item.id, { title: value })}
-            />
-            <Field
-              label="Ảnh"
-              value={item.image}
-              onChange={(value) => updateArticle(data, setData, item.id, { image: value })}
-              uploadId={`article-${item.id}`}
-              uploading={uploadingField === `article-${item.id}`}
-              onUpload={(file) =>
-                uploadImage(
-                  file,
-                  (value) => updateArticle(data, setData, item.id, { image: value }),
-                  `article-${item.id}`
-                )
-              }
-            />
-            <Field
-              label="Tóm tắt"
-              value={item.excerpt}
-              multiline
-              onChange={(value) => updateArticle(data, setData, item.id, { excerpt: value })}
-            />
-            <Field
-              label="Nội dung"
-              value={item.content ?? ""}
-              multiline
-              onChange={(value) => updateArticle(data, setData, item.id, { content: value })}
-            />
-          </>
-        )}
-      />
     </main>
   );
 }
@@ -356,18 +415,12 @@ function Field({
   label,
   value,
   onChange,
-  multiline = false,
-  uploadId,
-  uploading = false,
-  onUpload
+  multiline = false
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
-  uploadId?: string;
-  uploading?: boolean;
-  onUpload?: (file: File) => void;
 }) {
   return (
     <label className="admin-field">
@@ -377,23 +430,44 @@ function Field({
       ) : (
         <input value={value} onChange={(event) => onChange(event.target.value)} />
       )}
-      {uploadId && onUpload ? (
-        <span className="admin-upload-row">
-          <input
-            accept="image/*"
-            disabled={uploading}
-            id={uploadId}
-            onChange={(event) => {
-              const file = event.target.files?.[0];
-              if (file) onUpload(file);
-              event.target.value = "";
-            }}
-            type="file"
-          />
-          <span>{uploading ? "Đang tải ảnh..." : "Tải ảnh lên Cloudinary"}</span>
-        </span>
-      ) : null}
     </label>
+  );
+}
+
+function ImageField({
+  label,
+  value,
+  uploading,
+  onUpload,
+  compact = false
+}: {
+  label: string;
+  value: string;
+  uploading: boolean;
+  onUpload: (file: File) => void;
+  compact?: boolean;
+}) {
+  return (
+    <div className={`admin-image-field ${compact ? "compact" : ""}`}>
+      <span>{label}</span>
+      <div className="admin-image-preview">
+        {value ? <img src={value} alt="" /> : <p>Chưa có ảnh</p>}
+      </div>
+      <label className="admin-upload-button">
+        <input
+          accept="image/*"
+          disabled={uploading}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onUpload(file);
+            event.target.value = "";
+          }}
+          type="file"
+        />
+        <ImageUp size={16} />
+        {uploading ? "Đang tải..." : "Chọn ảnh"}
+      </label>
+    </div>
   );
 }
 
