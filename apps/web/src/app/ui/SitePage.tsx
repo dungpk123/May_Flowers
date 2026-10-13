@@ -275,7 +275,6 @@ function ProductArea({
                   <img src={product.image} alt={product.name} />
                 </div>
                 <div className="product-info">
-                  <p>{product.category}</p>
                   <h3>{product.name}</h3>
                   {product.price ? <strong>{money.format(product.price)}</strong> : null}
                   <em>Xem chi tiết</em>

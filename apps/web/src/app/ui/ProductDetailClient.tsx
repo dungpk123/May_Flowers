@@ -58,7 +58,6 @@ export default function ProductDetailClient({
         </div>
 
         <div className="product-detail-copy">
-          <p>{product.category}</p>
           <h1>{product.name}</h1>
           {product.price ? <strong>{money.format(product.price)}</strong> : null}
           {product.description ? <span>{product.description}</span> : null}
@@ -109,7 +108,6 @@ export default function ProductDetailClient({
                   <img src={item.image} alt={item.name} />
                 </div>
                 <div className="product-info">
-                  <p>{item.category}</p>
                   <h3>{item.name}</h3>
                   {item.price ? <strong>{money.format(item.price)}</strong> : null}
                   <em>Xem chi tiết</em>
