@@ -43,3 +43,31 @@ export async function uploadImageBuffer(
     overwrite: false
   });
 }
+
+export async function deleteImageByUrl(url?: string) {
+  ensureCloudinaryConfigured();
+
+  if (!url || !isCloudinaryConfigured()) return;
+
+  const publicId = getPublicIdFromCloudinaryUrl(url);
+  if (!publicId) return;
+
+  await cloudinary.uploader.destroy(publicId, { resource_type: "image" });
+}
+
+function getPublicIdFromCloudinaryUrl(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    if (!parsedUrl.hostname.includes("cloudinary.com")) return "";
+
+    const marker = "/upload/";
+    const markerIndex = parsedUrl.pathname.indexOf(marker);
+    if (markerIndex === -1) return "";
+
+    const afterUpload = parsedUrl.pathname.slice(markerIndex + marker.length);
+    const withoutVersion = afterUpload.replace(/^v\d+\//, "");
+    return withoutVersion.replace(/\.[^/.]+$/, "");
+  } catch {
+    return "";
+  }
+}

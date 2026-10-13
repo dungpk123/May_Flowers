@@ -15,7 +15,7 @@ import { NestFactory } from "@nestjs/core";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { SiteData } from "@shop-flower/data";
 import multer from "multer";
-import { isCloudinaryConfigured, uploadImageBuffer } from "./cloudinary";
+import { deleteImageByUrl, isCloudinaryConfigured, uploadImageBuffer } from "./cloudinary";
 import { readSiteData, saveSiteData, storageMode } from "./storage";
 
 @Controller()
@@ -78,13 +78,17 @@ class AppController {
       }
     })
   )
-  async uploadImage(@UploadedFile() file?: Express.Multer.File) {
+  async uploadImage(@UploadedFile() file?: Express.Multer.File, @Body("previousUrl") previousUrl = "") {
     if (!file) {
       throw new BadRequestException("Thiếu file ảnh.");
     }
 
     if (!isCloudinaryConfigured()) {
       throw new BadRequestException("Cloudinary chưa được cấu hình.");
+    }
+
+    if (previousUrl) {
+      await deleteImageByUrl(previousUrl);
     }
 
     const result = await uploadImageBuffer(file);
