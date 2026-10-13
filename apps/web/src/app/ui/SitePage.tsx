@@ -220,7 +220,7 @@ function ProductArea({
         ) : (
           <div className="product-grid">
             {products.map((product) => (
-              <a className="product-card" href={`/san-pham/${product.id}`} key={product.id}>
+              <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
                 <div className="product-image">
                   {product.badge ? <span>{product.badge}</span> : null}
                   <img src={product.image} alt={product.name} />

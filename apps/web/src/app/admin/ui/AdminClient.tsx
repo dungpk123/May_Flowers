@@ -22,21 +22,13 @@ const contactFields: Array<{ key: ContentKey; label: string }> = [
   { key: "email", label: "Email" }
 ];
 
-const otherFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
-  { key: "aboutTitle", label: "Tiêu đề giới thiệu" },
-  { key: "aboutContent", label: "Nội dung giới thiệu", multiline: true },
-  { key: "contactTitle", label: "Tiêu đề liên hệ" },
-  { key: "contactContent", label: "Nội dung liên hệ", multiline: true },
-  { key: "footerTitle", label: "Tiêu đề footer" },
-  { key: "footerDescription", label: "Mô tả footer", multiline: true }
-];
-
 export default function AdminClient({ initialData }: { initialData: SiteData }) {
   const [data, setData] = useState<SiteData>(initialData);
   const [status, setStatus] = useState("");
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
+  const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
 
   function updateContent(key: ContentKey, value: string) {
     setData({
@@ -108,6 +100,90 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     }
   }
 
+  function addCategory() {
+    const name = window.prompt("Nhập tên danh mục mới:");
+    if (!name?.trim()) return;
+
+    setData({
+      ...data,
+      categories: [...data.categories, { id: Date.now(), name: name.trim(), image: "" }]
+    });
+    setStatus(`Đã thêm danh mục "${name.trim()}". Bấm Lưu để cập nhật website.`);
+  }
+
+  function removeCategory(category: Category) {
+    const hasProducts = data.products.some((product) => product.category === category.name);
+    const message = hasProducts
+      ? `Danh mục "${category.name}" đang có sản phẩm. Xóa danh mục này vẫn giữ sản phẩm, bạn cần chọn lại danh mục cho sản phẩm sau. Bạn chắc chắn muốn xóa?`
+      : `Bạn chắc chắn muốn xóa danh mục "${category.name}"?`;
+
+    if (!window.confirm(message)) return;
+
+    setData({
+      ...data,
+      categories: data.categories.filter((item) => item.id !== category.id)
+    });
+    setStatus(`Đã xóa danh mục "${category.name}". Bấm Lưu để cập nhật website.`);
+  }
+
+  function addProduct() {
+    const name = window.prompt("Nhập tên sản phẩm mới:");
+    if (!name?.trim()) return;
+
+    setData({
+      ...data,
+      products: [
+        ...data.products,
+        {
+          id: Date.now(),
+          name: name.trim(),
+          category: data.categories[0]?.name ?? "",
+          image: "",
+          price: undefined
+        }
+      ]
+    });
+    setStatus(`Đã thêm sản phẩm "${name.trim()}". Bấm Lưu để cập nhật website.`);
+  }
+
+  function removeProduct(product: Product) {
+    if (!window.confirm(`Bạn chắc chắn muốn xóa sản phẩm "${product.name || "chưa đặt tên"}"?`)) {
+      return;
+    }
+
+    setData({
+      ...data,
+      products: data.products.filter((item) => item.id !== product.id)
+    });
+    setStatus(`Đã xóa sản phẩm "${product.name || "chưa đặt tên"}". Bấm Lưu để cập nhật website.`);
+  }
+
+  function addArticle() {
+    const title = window.prompt("Nhập tiêu đề bài viết mới:");
+    if (!title?.trim()) return;
+
+    setData({
+      ...data,
+      articles: [
+        ...data.articles,
+        { id: Date.now(), title: title.trim(), image: "", excerpt: "", content: "" }
+      ]
+    });
+    setStatus(`Đã thêm bài viết "${title.trim()}". Bấm Lưu để cập nhật website.`);
+  }
+
+  function removeArticle(article: Article) {
+    if (!window.confirm(`Bạn chắc chắn muốn xóa bài viết "${article.title || "chưa đặt tên"}"?`)) {
+      return;
+    }
+
+    setData({
+      ...data,
+      articles: data.articles.filter((item) => item.id !== article.id)
+    });
+    setStatus(`Đã xóa bài viết "${article.title || "chưa đặt tên"}". Bấm Lưu để cập nhật website.`);
+  }
+
   if (!isUnlocked) {
     return (
       <main className="admin-login-page">
@@ -148,79 +224,77 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
         {status ? <p className="admin-status">{status}</p> : null}
 
-        <section className="admin-panel">
-          <div className="admin-panel-heading">
-            <h2>Hình ảnh chính</h2>
-            <p>Thêm nhiều ảnh nền để hiển thị ở phần đầu trang.</p>
-          </div>
-          <div className="admin-image-grid single">
-            <ImageField
-              label="Logo"
-              value={data.assets.logo}
-              uploading={uploadingField === "asset-logo"}
-              onUpload={(file) =>
-                uploadImage(
-                  file,
-                  data.assets.logo,
-                  (value) => setData({ ...data, assets: { ...data.assets, logo: value } }),
-                  "asset-logo"
-                )
-              }
-            />
-          </div>
-          <BackgroundManager
-            images={data.assets.backgroundImages?.length ? data.assets.backgroundImages : [data.assets.background]}
-            uploadingField={uploadingField}
-            onAdd={(file) =>
-              uploadImage(
-                file,
-                "",
-                (value) => {
-                  const nextImages = [
-                    ...(data.assets.backgroundImages?.length
-                      ? data.assets.backgroundImages
-                      : data.assets.background
-                        ? [data.assets.background]
-                        : []),
-                    value
-                  ];
-                  setData({
-                    ...data,
-                    assets: {
-                      ...data.assets,
-                      background: nextImages[0] ?? "",
-                      backgroundImages: nextImages
-                    }
-                  });
-                },
-                "asset-background-add"
-              )
-            }
-            onRemove={(index) => {
-              const nextImages = (data.assets.backgroundImages?.length
-                ? data.assets.backgroundImages
-                : [data.assets.background]
-              ).filter((_, imageIndex) => imageIndex !== index);
-              setData({
-                ...data,
-                assets: {
-                  ...data.assets,
-                  background: nextImages[0] ?? "",
-                  backgroundImages: nextImages
+        <nav className="admin-tabs" aria-label="Mục quản trị">
+          <button className={activeSection === "overview" ? "active" : ""} onClick={() => setActiveSection("overview")} type="button">
+            Tổng quan
+          </button>
+          <button className={activeSection === "categories" ? "active" : ""} onClick={() => setActiveSection("categories")} type="button">
+            Danh mục
+          </button>
+          <button className={activeSection === "products" ? "active" : ""} onClick={() => setActiveSection("products")} type="button">
+            Sản phẩm
+          </button>
+          <button className={activeSection === "blog" ? "active" : ""} onClick={() => setActiveSection("blog")} type="button">
+            Blog
+          </button>
+        </nav>
+
+        {activeSection === "overview" ? (
+          <>
+            <section className="admin-panel">
+              <div className="admin-panel-heading">
+                <h2>Hình ảnh chính</h2>
+                <p>Thêm nhiều ảnh nền để hiển thị ở phần đầu trang.</p>
+              </div>
+              <div className="admin-image-grid single">
+                <ImageField
+                  label="Logo"
+                  value={data.assets.logo}
+                  uploading={uploadingField === "asset-logo"}
+                  onUpload={(file) =>
+                    uploadImage(
+                      file,
+                      data.assets.logo,
+                      (value) => setData({ ...data, assets: { ...data.assets, logo: value } }),
+                      "asset-logo"
+                    )
+                  }
+                />
+              </div>
+              <BackgroundManager
+                images={data.assets.backgroundImages?.length ? data.assets.backgroundImages : [data.assets.background]}
+                uploadingField={uploadingField}
+                onAdd={(file) =>
+                  uploadImage(
+                    file,
+                    "",
+                    (value) => {
+                      const nextImages = [
+                        ...(data.assets.backgroundImages?.length
+                          ? data.assets.backgroundImages
+                          : data.assets.background
+                            ? [data.assets.background]
+                            : []),
+                        value
+                      ];
+                      setData({
+                        ...data,
+                        assets: {
+                          ...data.assets,
+                          background: nextImages[0] ?? "",
+                          backgroundImages: nextImages
+                        }
+                      });
+                    },
+                    "asset-background-add"
+                  )
                 }
-              });
-            }}
-            onReplace={(file, index, previousUrl) =>
-              uploadImage(
-                file,
-                previousUrl,
-                (value) => {
-                  const nextImages = [
-                    ...(data.assets.backgroundImages?.length
-                      ? data.assets.backgroundImages
-                      : [data.assets.background])
-                  ];
-                  nextImages[index] = value;
+                onRemove={(index) => {
+                  if (!window.confirm("Bạn chắc chắn muốn xóa ảnh nền này?")) return;
+                  const nextImages = (data.assets.backgroundImages?.length
+                    ? data.assets.backgroundImages
+                    : [data.assets.background]
+                  ).filter((_, imageIndex) => imageIndex !== index);
                   setData({
                     ...data,
                     assets: {
@@ -229,63 +303,79 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                       backgroundImages: nextImages
                     }
                   });
-                },
-                `asset-background-${index}`
-              )
-            }
-          />
-        </section>
-
-        <section className="admin-panel">
-          <div className="admin-panel-heading">
-            <h2>Nội dung trang chủ</h2>
-            <p>Tên thương hiệu dùng cho footer và thông tin hệ thống.</p>
-          </div>
-          <div className="admin-grid compact">
-            {homeFields.map((field) => (
-              <Field
-                key={field.key}
-                label={field.label}
-                value={data.content[field.key]}
-                multiline={field.multiline}
-                onChange={(value) => updateContent(field.key, value)}
+                  setStatus("Đã xóa ảnh nền. Bấm Lưu để cập nhật website.");
+                }}
+                onReplace={(file, index, previousUrl) =>
+                  uploadImage(
+                    file,
+                    previousUrl,
+                    (value) => {
+                      const nextImages = [
+                        ...(data.assets.backgroundImages?.length
+                          ? data.assets.backgroundImages
+                          : [data.assets.background])
+                      ];
+                      nextImages[index] = value;
+                      setData({
+                        ...data,
+                        assets: {
+                          ...data.assets,
+                          background: nextImages[0] ?? "",
+                          backgroundImages: nextImages
+                        }
+                      });
+                    },
+                    `asset-background-${index}`
+                  )
+                }
               />
-            ))}
-          </div>
-        </section>
+          </section>
 
-        <section className="admin-panel">
-          <div className="admin-panel-heading">
-            <h2>Liên hệ</h2>
-            <p>Chỉ sửa link và số điện thoại.</p>
-          </div>
-          <div className="admin-grid compact">
-            {contactFields.map((field) => (
-              <Field
-                key={field.key}
-                label={field.label}
-                value={data.content[field.key]}
-                onChange={(value) => updateContent(field.key, value)}
-              />
-            ))}
-          </div>
-        </section>
+          <section className="admin-panel">
+            <div className="admin-panel-heading">
+              <h2>Nội dung trang chủ</h2>
+              <p>Tên thương hiệu dùng cho footer và thông tin hệ thống.</p>
+            </div>
+            <div className="admin-grid compact">
+              {homeFields.map((field) => (
+                <Field
+                  key={field.key}
+                  label={field.label}
+                  value={data.content[field.key]}
+                  multiline={field.multiline}
+                  onChange={(value) => updateContent(field.key, value)}
+                />
+              ))}
+            </div>
+          </section>
 
+          <section className="admin-panel">
+            <div className="admin-panel-heading">
+              <h2>Liên hệ</h2>
+              <p>Chỉ sửa link và số điện thoại.</p>
+            </div>
+            <div className="admin-grid compact one-column">
+              {contactFields.map((field) => (
+                <Field
+                  key={field.key}
+                  label={field.label}
+                  value={data.content[field.key]}
+                  onChange={(value) => updateContent(field.key, value)}
+                />
+              ))}
+            </div>
+          </section>
+          </>
+        ) : null}
+
+        {activeSection === "categories" ? (
         <section className="admin-panel">
           <div className="admin-panel-title">
             <div className="admin-panel-heading">
               <h2>Danh mục sản phẩm</h2>
               <p>Tạo nhóm như bó hoa, giỏ trái cây, hoa khai trương.</p>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setData({
-                  ...data,
-                  categories: [...data.categories, { id: Date.now(), name: "", image: "" }]
-                })
-              }
-            >
+            <button type="button" onClick={addCategory}>
               <Plus size={17} /> Thêm
             </button>
           </div>
@@ -316,12 +406,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 <button
                   className="delete-button icon-only"
                   type="button"
-                  onClick={() =>
-                    setData({
-                      ...data,
-                      categories: data.categories.filter((category) => category.id !== item.id)
-                    })
-                  }
+                  onClick={() => removeCategory(item)}
                   title="Xóa danh mục"
                 >
                   <Trash2 size={17} />
@@ -330,25 +415,16 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             ))}
           </div>
         </section>
+        ) : null}
 
+        {activeSection === "products" ? (
         <section className="admin-panel">
           <div className="admin-panel-title">
             <div className="admin-panel-heading">
               <h2>Sản phẩm</h2>
               <p>Thêm tên, giá, danh mục và ảnh sản phẩm.</p>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setData({
-                  ...data,
-                  products: [
-                    ...data.products,
-                    { id: Date.now(), name: "", category: "", image: "", price: undefined }
-                  ]
-                })
-              }
-            >
+            <button type="button" onClick={addProduct}>
               <Plus size={17} /> Thêm
             </button>
           </div>
@@ -413,12 +489,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 <button
                   className="delete-button icon-only"
                   type="button"
-                  onClick={() =>
-                    setData({
-                      ...data,
-                      products: data.products.filter((product) => product.id !== item.id)
-                    })
-                  }
+                  onClick={() => removeProduct(item)}
                   title="Xóa sản phẩm"
                 >
                   <Trash2 size={17} />
@@ -427,25 +498,16 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             ))}
           </div>
         </section>
+        ) : null}
 
+        {activeSection === "blog" ? (
         <section className="admin-panel">
           <div className="admin-panel-title">
             <div className="admin-panel-heading">
               <h2>Blog</h2>
               <p>Bài viết sẽ hiển thị ở trang blog.</p>
             </div>
-            <button
-              type="button"
-              onClick={() =>
-                setData({
-                  ...data,
-                  articles: [
-                    ...data.articles,
-                    { id: Date.now(), title: "", image: "", excerpt: "", content: "" }
-                  ]
-                })
-              }
-            >
+            <button type="button" onClick={addArticle}>
               <Plus size={17} /> Thêm
             </button>
           </div>
@@ -489,12 +551,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 <button
                   className="delete-button icon-only"
                   type="button"
-                  onClick={() =>
-                    setData({
-                      ...data,
-                      articles: data.articles.filter((article) => article.id !== item.id)
-                    })
-                  }
+                  onClick={() => removeArticle(item)}
                   title="Xóa bài viết"
                 >
                   <Trash2 size={17} />
@@ -503,24 +560,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             ))}
           </div>
         </section>
-
-        <section className="admin-panel">
-          <div className="admin-panel-heading">
-            <h2>Trang phụ</h2>
-            <p>Nội dung giới thiệu, liên hệ và footer.</p>
-          </div>
-          <div className="admin-grid compact">
-            {otherFields.map((field) => (
-              <Field
-                key={field.key}
-                label={field.label}
-                value={data.content[field.key]}
-                multiline={field.multiline}
-                onChange={(value) => updateContent(field.key, value)}
-              />
-            ))}
-          </div>
-        </section>
+        ) : null}
       </aside>
 
       <section className="admin-preview-pane">

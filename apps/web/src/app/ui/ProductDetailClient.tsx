@@ -79,7 +79,7 @@ export default function ProductDetailClient({
           <h2>Sản phẩm tương tự</h2>
           <div className="product-grid">
             {relatedProducts.map((item) => (
-              <a className="product-card" href={`/san-pham/${item.id}`} key={item.id}>
+              <a className="product-card" href={`/san-pham?id=${item.id}`} key={item.id}>
                 <div className="product-image">
                   {item.badge ? <span>{item.badge}</span> : null}
                   <img src={item.image} alt={item.name} />

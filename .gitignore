@@ -2,6 +2,7 @@ node_modules
 .next
 dist
 build
+apps/web/out
 .env
 .env.local
 npm-debug.log*

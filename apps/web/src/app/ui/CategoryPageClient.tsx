@@ -1,7 +1,7 @@
 "use client";
 
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -29,6 +29,13 @@ export default function CategoryPageClient({
   const [category, setCategory] = useState(initialCategory ?? "Tất cả");
   const [priceRange, setPriceRange] = useState("Tất cả giá");
   const [sort, setSort] = useState("default");
+
+  useEffect(() => {
+    if (initialCategory) return;
+
+    const urlCategory = new URLSearchParams(window.location.search).get("category");
+    if (urlCategory) setCategory(urlCategory);
+  }, [initialCategory]);
 
   const filteredProducts = useMemo(() => {
     const range = priceRanges.find((item) => item.label === priceRange) ?? priceRanges[0];
@@ -128,7 +135,7 @@ export default function CategoryPageClient({
 
 function ProductCard({ product }: { product: Product }) {
   return (
-    <a className="product-card" href={`/san-pham/${product.id}`}>
+    <a className="product-card" href={`/san-pham?id=${product.id}`}>
       <div className="product-image">
         {product.badge ? <span>{product.badge}</span> : null}
         <img src={product.image} alt={product.name} />
