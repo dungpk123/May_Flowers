@@ -12,6 +12,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [status, setStatus] = useState("");
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [uploadingField, setUploadingField] = useState("");
 
   function unlock(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -40,6 +41,34 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
     setData(await response.json());
     setStatus("Đã lưu. Quay lại trang chủ để xem thay đổi.");
+  }
+
+  async function uploadImage(file: File, onUploaded: (url: string) => void, fieldId: string) {
+    setUploadingField(fieldId);
+    setStatus("Đang tải ảnh lên Cloudinary...");
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch(`${apiUrl}/uploads/image`, {
+        method: "POST",
+        body: formData
+      });
+
+      const result = await response.json();
+      if (!response.ok || !result.url) {
+        setStatus(result.message || result.error || "Upload ảnh thất bại.");
+        return;
+      }
+
+      onUploaded(result.url);
+      setStatus("Đã upload ảnh. Nhớ bấm Lưu thay đổi để ghi vào database.");
+    } catch {
+      setStatus("Upload ảnh thất bại. Kiểm tra API NestJS và Cloudinary.");
+    } finally {
+      setUploadingField("");
+    }
   }
 
   if (!isUnlocked) {
@@ -91,12 +120,30 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             label="Logo"
             value={data.assets.logo}
             onChange={(value) => setData({ ...data, assets: { ...data.assets, logo: value } })}
+            uploadId="asset-logo"
+            uploading={uploadingField === "asset-logo"}
+            onUpload={(file) =>
+              uploadImage(
+                file,
+                (value) => setData({ ...data, assets: { ...data.assets, logo: value } }),
+                "asset-logo"
+              )
+            }
           />
           <Field
             label="Background"
             value={data.assets.background}
             onChange={(value) =>
               setData({ ...data, assets: { ...data.assets, background: value } })
+            }
+            uploadId="asset-background"
+            uploading={uploadingField === "asset-background"}
+            onUpload={(file) =>
+              uploadImage(
+                file,
+                (value) => setData({ ...data, assets: { ...data.assets, background: value } }),
+                "asset-background"
+              )
             }
           />
           <Field
@@ -167,6 +214,15 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               label="Ảnh"
               value={item.image}
               onChange={(value) => updateCategory(data, setData, item.id, { image: value })}
+              uploadId={`category-${item.id}`}
+              uploading={uploadingField === `category-${item.id}`}
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => updateCategory(data, setData, item.id, { image: value }),
+                  `category-${item.id}`
+                )
+              }
             />
           </>
         )}
@@ -213,6 +269,15 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               label="Ảnh"
               value={item.image}
               onChange={(value) => updateProduct(data, setData, item.id, { image: value })}
+              uploadId={`product-${item.id}`}
+              uploading={uploadingField === `product-${item.id}`}
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => updateProduct(data, setData, item.id, { image: value }),
+                  `product-${item.id}`
+                )
+              }
             />
             <Field
               label="Nhãn"
@@ -258,6 +323,15 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               label="Ảnh"
               value={item.image}
               onChange={(value) => updateArticle(data, setData, item.id, { image: value })}
+              uploadId={`article-${item.id}`}
+              uploading={uploadingField === `article-${item.id}`}
+              onUpload={(file) =>
+                uploadImage(
+                  file,
+                  (value) => updateArticle(data, setData, item.id, { image: value }),
+                  `article-${item.id}`
+                )
+              }
             />
             <Field
               label="Tóm tắt"
@@ -282,12 +356,18 @@ function Field({
   label,
   value,
   onChange,
-  multiline = false
+  multiline = false,
+  uploadId,
+  uploading = false,
+  onUpload
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   multiline?: boolean;
+  uploadId?: string;
+  uploading?: boolean;
+  onUpload?: (file: File) => void;
 }) {
   return (
     <label className="admin-field">
@@ -297,6 +377,22 @@ function Field({
       ) : (
         <input value={value} onChange={(event) => onChange(event.target.value)} />
       )}
+      {uploadId && onUpload ? (
+        <span className="admin-upload-row">
+          <input
+            accept="image/*"
+            disabled={uploading}
+            id={uploadId}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onUpload(file);
+              event.target.value = "";
+            }}
+            type="file"
+          />
+          <span>{uploading ? "Đang tải ảnh..." : "Tải ảnh lên Cloudinary"}</span>
+        </span>
+      ) : null}
     </label>
   );
 }

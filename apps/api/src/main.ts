@@ -1,7 +1,21 @@
 import "reflect-metadata";
-import { Body, Controller, Get, Module, Put, Query } from "@nestjs/common";
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Module,
+  Post,
+  Put,
+  Query,
+  UploadedFile,
+  UseInterceptors
+} from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
+import { FileInterceptor } from "@nestjs/platform-express";
 import type { SiteData } from "@shop-flower/data";
+import multer from "multer";
+import { isCloudinaryConfigured, uploadImageBuffer } from "./cloudinary";
 import { readSiteData, saveSiteData, storageMode } from "./storage";
 
 @Controller()
@@ -47,6 +61,41 @@ class AppController {
   @Get("articles")
   async getArticles() {
     return (await readSiteData()).articles;
+  }
+
+  @Post("uploads/image")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: multer.memoryStorage(),
+      limits: { fileSize: 5 * 1024 * 1024 },
+      fileFilter: (_request, file, callback) => {
+        if (!file.mimetype.startsWith("image/")) {
+          callback(new BadRequestException("Chỉ chấp nhận file ảnh."), false);
+          return;
+        }
+
+        callback(null, true);
+      }
+    })
+  )
+  async uploadImage(@UploadedFile() file?: Express.Multer.File) {
+    if (!file) {
+      throw new BadRequestException("Thiếu file ảnh.");
+    }
+
+    if (!isCloudinaryConfigured()) {
+      throw new BadRequestException("Cloudinary chưa được cấu hình.");
+    }
+
+    const result = await uploadImageBuffer(file);
+    const url = result.secure_url || result.url;
+
+    return {
+      url,
+      publicId: result.public_id,
+      width: result.width,
+      height: result.height
+    };
   }
 }
 

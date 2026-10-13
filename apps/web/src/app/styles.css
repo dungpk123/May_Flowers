@@ -1010,6 +1010,27 @@ footer p {
   resize: vertical;
 }
 
+.admin-upload-row {
+  align-items: center;
+  background: #f7fbf7;
+  border: 1px dashed #b7d9be;
+  border-radius: 8px;
+  color: var(--green);
+  cursor: pointer;
+  display: flex;
+  font-size: 13px;
+  font-weight: 700;
+  gap: 10px;
+  min-height: 42px;
+  padding: 9px 12px;
+}
+
+.admin-upload-row input {
+  border: 0;
+  cursor: pointer;
+  padding: 0;
+}
+
 .admin-list {
   display: grid;
   gap: 14px;
