@@ -1175,6 +1175,33 @@ footer p {
   overflow: hidden;
 }
 
+.admin-site-preview {
+  background: #fff;
+  max-height: calc(100vh - 116px);
+  overflow: auto;
+  position: relative;
+}
+
+.admin-site-preview .site-header {
+  position: static;
+}
+
+.admin-site-preview .floating-contact {
+  left: 18px;
+  position: absolute;
+  top: 460px;
+}
+
+.admin-site-preview .floating-contact a {
+  height: 52px;
+  width: 52px;
+}
+
+.admin-site-preview .floating-contact img {
+  height: 32px;
+  width: 32px;
+}
+
 .preview-topbar {
   align-items: center;
   background: #faf8f5;

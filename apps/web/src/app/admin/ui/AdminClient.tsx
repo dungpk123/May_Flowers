@@ -1,8 +1,9 @@
 "use client";
 
 import { ImageUp, Plus, Save, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
+import SitePage from "../../ui/SitePage";
 
 const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
@@ -40,8 +41,6 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
-
-  const previewProducts = useMemo(() => data.products.slice(0, 6), [data.products]);
 
   function updateContent(key: ContentKey, value: string) {
     setData({
@@ -488,66 +487,8 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         </header>
 
         <div className="admin-preview-card">
-          <div className="preview-topbar">
-            {data.assets.logo ? <img src={data.assets.logo} alt="" /> : <span>Logo</span>}
-            <div className="preview-search">Tìm kiếm sản phẩm</div>
-            <div className="preview-contact-icons">
-              <img src={data.assets.zaloIcon} alt="" />
-              <img src={data.assets.facebookIcon} alt="" />
-              <img src={data.assets.phoneIcon} alt="" />
-            </div>
-          </div>
-          <div
-            className="preview-hero"
-            style={{
-              backgroundImage: data.assets.background
-                ? `linear-gradient(90deg, rgba(35,74,44,.88), rgba(73,137,73,.38)), url(${data.assets.background})`
-                : undefined
-            }}
-          >
-            <p>{data.content.tagline || "Dòng nhỏ phía trên"}</p>
-            <h3>{data.content.heroTitle || data.content.brandName || "Tên thương hiệu"}</h3>
-            <strong>{data.content.heroSubtitle || "Tiêu đề phụ"}</strong>
-            <span>{data.content.heroDescription || "Mô tả ngắn về dịch vụ của bạn."}</span>
-          </div>
-
-          <div className="preview-contact-strip">
-            <a href={data.content.zaloUrl || "#"}>Nhắn Zalo</a>
-            <a href={`tel:${data.content.hotline.replace(/\s/g, "") || "0900365365"}`}>
-              Gọi {data.content.hotline || "0900 365 365"}
-            </a>
-          </div>
-
-          <div className="preview-products">
-            <div className="preview-section-title">Danh mục</div>
-            {data.categories.length > 0 ? (
-              <div className="preview-category-grid">
-                {data.categories.slice(0, 5).map((category) => (
-                  <article key={category.id}>
-                    {category.image ? <img src={category.image} alt="" /> : <div />}
-                    <strong>{category.name || "Tên danh mục"}</strong>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="preview-empty">Danh mục sẽ hiện ở đây khi bạn thêm bên trái.</p>
-            )}
-
-            <div className="preview-section-title">Sản phẩm</div>
-            {previewProducts.length > 0 ? (
-              <div className="preview-product-grid">
-                {previewProducts.map((product) => (
-                  <article key={product.id}>
-                    {product.image ? <img src={product.image} alt="" /> : <div />}
-                    <small>{product.category || "Danh mục"}</small>
-                    <h4>{product.name || "Tên sản phẩm"}</h4>
-                    <p>{product.price ? `${product.price.toLocaleString("vi-VN")} đ` : "Liên hệ"}</p>
-                  </article>
-                ))}
-              </div>
-            ) : (
-              <p className="preview-empty">Sản phẩm sẽ hiện ở đây khi bạn thêm bên trái.</p>
-            )}
+          <div className="admin-site-preview">
+            <SitePage data={data} view="home" />
           </div>
         </div>
       </section>
