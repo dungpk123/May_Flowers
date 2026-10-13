@@ -18,6 +18,27 @@ const money = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0
 });
 
+function externalUrl(value: string) {
+  const url = value.trim();
+  if (!url) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
+  return `https://${url}`;
+}
+
+function zaloUrl(value: string) {
+  const url = value.trim();
+  if (!url) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
+  const digits = url.replace(/\D/g, "");
+  return digits ? `https://zalo.me/${digits}` : externalUrl(url);
+}
+
+function phoneUrl(value: string) {
+  const phone = value.trim();
+  if (!phone) return "";
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
 export default function SitePage({ data, view }: { data: SiteData; view: SiteView }) {
   const [query, setQuery] = useState("");
   const visibleCategories = useMemo(
@@ -278,7 +299,11 @@ function Cta({ data }: { data: SiteData }) {
         {data.content.ctaTitle ? <h2>{data.content.ctaTitle}</h2> : null}
         {data.content.ctaDescription ? <span>{data.content.ctaDescription}</span> : null}
       </div>
-      {data.content.hotline ? <a href={`tel:${data.content.hotline}`}>Gửi yêu cầu ngay</a> : null}
+      {data.content.hotline ? (
+        <a href={phoneUrl(data.content.hotline)} rel="noreferrer" target="_blank">
+          Gửi yêu cầu ngay
+        </a>
+      ) : null}
     </section>
   );
 }
@@ -352,17 +377,17 @@ function Footer({ data }: { data: SiteData }) {
         <h4>Kết nối</h4>
         <div className="footer-socials">
           {data.content.zaloUrl ? (
-            <a href={data.content.zaloUrl}>
+            <a href={zaloUrl(data.content.zaloUrl)} rel="noreferrer" target="_blank">
               <img src={data.assets.zaloIcon} alt="Zalo" />
             </a>
           ) : null}
           {data.content.facebookUrl ? (
-            <a href={data.content.facebookUrl}>
+            <a href={externalUrl(data.content.facebookUrl)} rel="noreferrer" target="_blank">
               <img src={data.assets.facebookIcon} alt="Facebook" />
             </a>
           ) : null}
           {data.content.hotline ? (
-            <a href={`tel:${data.content.hotline}`}>
+            <a href={phoneUrl(data.content.hotline)} rel="noreferrer" target="_blank">
               <img src={data.assets.phoneIcon} alt="Số điện thoại" />
             </a>
           ) : null}
@@ -376,17 +401,17 @@ function FloatingContact({ data }: { data: SiteData }) {
   return (
     <div className="floating-contact" aria-label="Liên hệ nhanh">
       {data.content.zaloUrl ? (
-        <a href={data.content.zaloUrl} aria-label="Zalo">
+        <a href={zaloUrl(data.content.zaloUrl)} aria-label="Zalo" rel="noreferrer" target="_blank">
           <img src={data.assets.zaloIcon} alt="" />
         </a>
       ) : null}
       {data.content.facebookUrl ? (
-        <a href={data.content.facebookUrl} aria-label="Facebook">
+        <a href={externalUrl(data.content.facebookUrl)} aria-label="Facebook" rel="noreferrer" target="_blank">
           <img src={data.assets.facebookIcon} alt="" />
         </a>
       ) : null}
       {data.content.hotline ? (
-        <a href={`tel:${data.content.hotline}`} aria-label="Số điện thoại">
+        <a href={phoneUrl(data.content.hotline)} aria-label="Số điện thoại" rel="noreferrer" target="_blank">
           <img src={data.assets.phoneIcon} alt="" />
         </a>
       ) : null}

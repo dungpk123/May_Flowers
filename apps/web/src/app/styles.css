@@ -1009,6 +1009,86 @@ footer p {
   padding: 10px 12px;
 }
 
+.admin-modal-backdrop {
+  align-items: center;
+  background: rgba(14, 25, 16, 0.52);
+  display: flex;
+  inset: 0;
+  justify-content: center;
+  padding: 24px;
+  position: fixed;
+  z-index: 100;
+}
+
+.admin-modal {
+  background: #fff;
+  border: 1px solid #dce8dc;
+  border-radius: 8px;
+  box-shadow: 0 28px 80px rgba(12, 26, 15, 0.26);
+  display: grid;
+  gap: 18px;
+  max-width: 460px;
+  padding: 22px;
+  width: min(100%, 460px);
+}
+
+.admin-modal p,
+.admin-modal h2,
+.admin-modal span {
+  margin: 0;
+}
+
+.admin-modal p {
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.admin-modal h2 {
+  color: var(--deep-green);
+  font-size: 24px;
+  line-height: 1.1;
+  margin-top: 4px;
+}
+
+.admin-modal > div > span {
+  color: var(--muted);
+  display: block;
+  font-size: 14px;
+  line-height: 1.55;
+  margin-top: 8px;
+}
+
+.admin-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.admin-modal-actions button {
+  border: 0;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 40px;
+  padding: 0 18px;
+}
+
+.admin-modal-actions button[type="submit"] {
+  background: var(--green);
+  color: #fff;
+}
+
+.admin-modal-actions .ghost-modal-button {
+  background: #f1f6f1;
+  color: var(--deep-green);
+}
+
+.admin-modal-actions .danger-modal-button {
+  background: #d92d20;
+}
+
 .admin-tabs {
   background: #eef7ef;
   border: 1px solid #d8e6d9;

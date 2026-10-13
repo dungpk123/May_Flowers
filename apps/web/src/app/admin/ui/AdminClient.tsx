@@ -1,7 +1,7 @@
 "use client";
 
 import { ImageUp, Plus, Save, Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Article, Category, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
 
@@ -9,6 +9,17 @@ const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
 
 type ContentKey = keyof SiteData["content"];
+
+type AdminModal = {
+  title: string;
+  message: string;
+  inputLabel?: string;
+  initialValue?: string;
+  confirmText?: string;
+  cancelText?: string;
+  danger?: boolean;
+  onConfirm: (value: string) => void;
+};
 
 const homeFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
   { key: "brandName", label: "Tên thương hiệu" }
@@ -34,6 +45,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
+  const [modal, setModal] = useState<AdminModal | null>(null);
 
   function updateContent(key: ContentKey, value: string) {
     setData({
@@ -106,14 +118,22 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   function addCategory() {
-    const name = window.prompt("Nhập tên danh mục mới:");
-    if (!name?.trim()) return;
+    setModal({
+      title: "Thêm danh mục",
+      message: "Nhập tên danh mục mới.",
+      inputLabel: "Tên danh mục",
+      confirmText: "Thêm danh mục",
+      onConfirm: (value) => {
+        const name = value.trim();
+        if (!name) return;
 
-    setData({
-      ...data,
-      categories: [...data.categories, { id: Date.now(), name: name.trim(), image: "" }]
+        setData({
+          ...data,
+          categories: [...data.categories, { id: Date.now(), name, image: "" }]
+        });
+        setStatus(`Đã thêm danh mục "${name}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã thêm danh mục "${name.trim()}". Bấm Lưu để cập nhật website.`);
   }
 
   function removeCategory(category: Category) {
@@ -122,71 +142,103 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
       ? `Danh mục "${category.name}" đang có sản phẩm. Xóa danh mục này vẫn giữ sản phẩm, bạn cần chọn lại danh mục cho sản phẩm sau. Bạn chắc chắn muốn xóa?`
       : `Bạn chắc chắn muốn xóa danh mục "${category.name}"?`;
 
-    if (!window.confirm(message)) return;
-
-    setData({
-      ...data,
-      categories: data.categories.filter((item) => item.id !== category.id)
+    setModal({
+      title: "Xóa danh mục",
+      message,
+      confirmText: "Xóa danh mục",
+      danger: true,
+      onConfirm: () => {
+        setData({
+          ...data,
+          categories: data.categories.filter((item) => item.id !== category.id)
+        });
+        setStatus(`Đã xóa danh mục "${category.name}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã xóa danh mục "${category.name}". Bấm Lưu để cập nhật website.`);
   }
 
   function addProduct() {
-    const name = window.prompt("Nhập tên sản phẩm mới:");
-    if (!name?.trim()) return;
+    setModal({
+      title: "Thêm sản phẩm",
+      message: "Nhập tên sản phẩm mới.",
+      inputLabel: "Tên sản phẩm",
+      confirmText: "Thêm sản phẩm",
+      onConfirm: (value) => {
+        const name = value.trim();
+        if (!name) return;
 
-    setData({
-      ...data,
-      products: [
-        ...data.products,
-        {
-          id: Date.now(),
-          name: name.trim(),
-          category: data.categories[0]?.name ?? "",
-          image: "",
-          price: undefined
-        }
-      ]
+        setData({
+          ...data,
+          products: [
+            ...data.products,
+            {
+              id: Date.now(),
+              name,
+              category: data.categories[0]?.name ?? "",
+              image: "",
+              price: undefined
+            }
+          ]
+        });
+        setStatus(`Đã thêm sản phẩm "${name}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã thêm sản phẩm "${name.trim()}". Bấm Lưu để cập nhật website.`);
   }
 
   function removeProduct(product: Product) {
-    if (!window.confirm(`Bạn chắc chắn muốn xóa sản phẩm "${product.name || "chưa đặt tên"}"?`)) {
-      return;
-    }
-
-    setData({
-      ...data,
-      products: data.products.filter((item) => item.id !== product.id)
+    const productName = product.name || "chưa đặt tên";
+    setModal({
+      title: "Xóa sản phẩm",
+      message: `Bạn chắc chắn muốn xóa sản phẩm "${productName}"?`,
+      confirmText: "Xóa sản phẩm",
+      danger: true,
+      onConfirm: () => {
+        setData({
+          ...data,
+          products: data.products.filter((item) => item.id !== product.id)
+        });
+        setStatus(`Đã xóa sản phẩm "${productName}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã xóa sản phẩm "${product.name || "chưa đặt tên"}". Bấm Lưu để cập nhật website.`);
   }
 
   function addArticle() {
-    const title = window.prompt("Nhập tiêu đề bài viết mới:");
-    if (!title?.trim()) return;
+    setModal({
+      title: "Thêm bài viết",
+      message: "Nhập tiêu đề bài viết mới.",
+      inputLabel: "Tiêu đề bài viết",
+      confirmText: "Thêm bài viết",
+      onConfirm: (value) => {
+        const title = value.trim();
+        if (!title) return;
 
-    setData({
-      ...data,
-      articles: [
-        ...data.articles,
-        { id: Date.now(), title: title.trim(), image: "", excerpt: "", content: "" }
-      ]
+        setData({
+          ...data,
+          articles: [
+            ...data.articles,
+            { id: Date.now(), title, image: "", excerpt: "", content: "" }
+          ]
+        });
+        setStatus(`Đã thêm bài viết "${title}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã thêm bài viết "${title.trim()}". Bấm Lưu để cập nhật website.`);
   }
 
   function removeArticle(article: Article) {
-    if (!window.confirm(`Bạn chắc chắn muốn xóa bài viết "${article.title || "chưa đặt tên"}"?`)) {
-      return;
-    }
-
-    setData({
-      ...data,
-      articles: data.articles.filter((item) => item.id !== article.id)
+    const articleTitle = article.title || "chưa đặt tên";
+    setModal({
+      title: "Xóa bài viết",
+      message: `Bạn chắc chắn muốn xóa bài viết "${articleTitle}"?`,
+      confirmText: "Xóa bài viết",
+      danger: true,
+      onConfirm: () => {
+        setData({
+          ...data,
+          articles: data.articles.filter((item) => item.id !== article.id)
+        });
+        setStatus(`Đã xóa bài viết "${articleTitle}". Bấm Lưu để cập nhật website.`);
+      }
     });
-    setStatus(`Đã xóa bài viết "${article.title || "chưa đặt tên"}". Bấm Lưu để cập nhật website.`);
   }
 
   if (!isUnlocked) {
@@ -295,20 +347,27 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                   )
                 }
                 onRemove={(index) => {
-                  if (!window.confirm("Bạn chắc chắn muốn xóa ảnh nền này?")) return;
-                  const nextImages = (data.assets.backgroundImages?.length
-                    ? data.assets.backgroundImages
-                    : [data.assets.background]
-                  ).filter((_, imageIndex) => imageIndex !== index);
-                  setData({
-                    ...data,
-                    assets: {
-                      ...data.assets,
-                      background: nextImages[0] ?? "",
-                      backgroundImages: nextImages
+                  setModal({
+                    title: "Xóa ảnh nền",
+                    message: "Bạn chắc chắn muốn xóa ảnh nền này?",
+                    confirmText: "Xóa ảnh",
+                    danger: true,
+                    onConfirm: () => {
+                      const nextImages = (data.assets.backgroundImages?.length
+                        ? data.assets.backgroundImages
+                        : [data.assets.background]
+                      ).filter((_, imageIndex) => imageIndex !== index);
+                      setData({
+                        ...data,
+                        assets: {
+                          ...data.assets,
+                          background: nextImages[0] ?? "",
+                          backgroundImages: nextImages
+                        }
+                      });
+                      setStatus("Đã xóa ảnh nền. Bấm Lưu để cập nhật website.");
                     }
                   });
-                  setStatus("Đã xóa ảnh nền. Bấm Lưu để cập nhật website.");
                 }}
                 onReplace={(file, index, previousUrl) =>
                   uploadImage(
@@ -607,7 +666,54 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           </div>
         </section>
       ) : null}
+      {modal ? <AdminModalDialog modal={modal} onClose={() => setModal(null)} /> : null}
     </main>
+  );
+}
+
+function AdminModalDialog({
+  modal,
+  onClose
+}: {
+  modal: AdminModal;
+  onClose: () => void;
+}) {
+  const [value, setValue] = useState(modal.initialValue ?? "");
+
+  useEffect(() => {
+    setValue(modal.initialValue ?? "");
+  }, [modal]);
+
+  function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    modal.onConfirm(value);
+    onClose();
+  }
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <form className="admin-modal" onSubmit={submit}>
+        <div>
+          <p>Quản trị website</p>
+          <h2>{modal.title}</h2>
+          <span>{modal.message}</span>
+        </div>
+        {modal.inputLabel ? (
+          <label className="admin-field">
+            <span>{modal.inputLabel}</span>
+            <input autoFocus value={value} onChange={(event) => setValue(event.target.value)} />
+          </label>
+        ) : null}
+        <div className="admin-modal-actions">
+          <button className="ghost-modal-button" onClick={onClose} type="button">
+            {modal.cancelText ?? "Hủy"}
+          </button>
+          <button className={modal.danger ? "danger-modal-button" : ""} type="submit">
+            {modal.confirmText ?? "Xác nhận"}
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
 

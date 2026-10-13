@@ -10,6 +10,20 @@ const money = new Intl.NumberFormat("vi-VN", {
   maximumFractionDigits: 0
 });
 
+function zaloUrl(value: string) {
+  const url = value.trim();
+  if (!url) return "";
+  if (/^(https?:|mailto:|tel:)/i.test(url)) return url;
+  const digits = url.replace(/\D/g, "");
+  return digits ? `https://zalo.me/${digits}` : `https://${url}`;
+}
+
+function phoneUrl(value: string) {
+  const phone = value.trim();
+  if (!phone) return "";
+  return `tel:${phone.replace(/[^\d+]/g, "")}`;
+}
+
 export default function ProductDetailClient({
   data,
   product
@@ -61,12 +75,22 @@ export default function ProductDetailClient({
 
           <div className="product-contact-actions">
             {data.content.zaloUrl ? (
-              <a className="zalo-action" href={data.content.zaloUrl}>
+              <a
+                className="zalo-action"
+                href={zaloUrl(data.content.zaloUrl)}
+                rel="noreferrer"
+                target="_blank"
+              >
                 Nhắn Zalo
               </a>
             ) : null}
             {data.content.hotline ? (
-              <a className="phone-action" href={`tel:${data.content.hotline}`}>
+              <a
+                className="phone-action"
+                href={phoneUrl(data.content.hotline)}
+                rel="noreferrer"
+                target="_blank"
+              >
                 Gọi {data.content.hotline}
               </a>
             ) : null}
