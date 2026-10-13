@@ -22,6 +22,11 @@ const contactFields: Array<{ key: ContentKey; label: string }> = [
   { key: "email", label: "Email" }
 ];
 
+const footerFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
+  { key: "footerTitle", label: "Tiêu đề footer" },
+  { key: "footerDescription", label: "Mô tả footer", multiline: true }
+];
+
 export default function AdminClient({ initialData }: { initialData: SiteData }) {
   const [data, setData] = useState<SiteData>(initialData);
   const [status, setStatus] = useState("");
@@ -210,7 +215,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   return (
-    <main className="admin-workspace">
+    <main className={`admin-workspace ${activeSection === "overview" ? "" : "admin-wide"}`}>
       <aside className="admin-editor">
         <header className="admin-editor-header">
           <div>
@@ -365,6 +370,24 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               ))}
             </div>
           </section>
+
+          <section className="admin-panel">
+            <div className="admin-panel-heading">
+              <h2>Footer</h2>
+              <p>Nội dung hiển thị ở phần chân trang.</p>
+            </div>
+            <div className="admin-grid compact one-column">
+              {footerFields.map((field) => (
+                <Field
+                  key={field.key}
+                  label={field.label}
+                  value={data.content[field.key]}
+                  multiline={field.multiline}
+                  onChange={(value) => updateContent(field.key, value)}
+                />
+              ))}
+            </div>
+          </section>
           </>
         ) : null}
 
@@ -462,7 +485,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                         updateProduct(data, setData, item.id, { category: value })
                       }
                     />
-                    <Field
+                    <PriceField
                       label="Giá"
                       value={item.price ? String(item.price) : ""}
                       onChange={(value) =>
@@ -471,10 +494,12 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                         })
                       }
                     />
-                    <Field
+                    <BadgeField
                       label="Nhãn"
                       value={item.badge ?? ""}
-                      onChange={(value) => updateProduct(data, setData, item.id, { badge: value })}
+                      onChange={(value) =>
+                        updateProduct(data, setData, item.id, { badge: value || undefined })
+                      }
                     />
                   </div>
                   <Field
@@ -563,23 +588,25 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         ) : null}
       </aside>
 
-      <section className="admin-preview-pane">
-        <header className="admin-preview-header">
-          <div>
-            <p>Preview trực tiếp</p>
-            <h2>Trang chủ</h2>
-          </div>
-          <a href="/" target="_blank">
-            Xem website
-          </a>
-        </header>
+      {activeSection === "overview" ? (
+        <section className="admin-preview-pane">
+          <header className="admin-preview-header">
+            <div>
+              <p>Preview trực tiếp</p>
+              <h2>Trang chủ</h2>
+            </div>
+            <a href="/" target="_blank">
+              Xem website
+            </a>
+          </header>
 
-        <div className="admin-preview-card">
-          <div className="admin-site-preview">
-            <SitePage data={data} view="home" />
+          <div className="admin-preview-card">
+            <div className="admin-site-preview">
+              <SitePage data={data} view="home" />
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
     </main>
   );
 }
@@ -629,6 +656,58 @@ function SelectField({
           </option>
         ))}
       </select>
+    </label>
+  );
+}
+
+function PriceField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="admin-field">
+      <span>{label}</span>
+      <div className="admin-input-suffix">
+        <input
+          inputMode="numeric"
+          value={value}
+          onChange={(event) => onChange(event.target.value.replace(/\D/g, ""))}
+        />
+        <b>VND</b>
+      </div>
+    </label>
+  );
+}
+
+function BadgeField({
+  label,
+  value,
+  onChange
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="admin-field">
+      <span>{label}</span>
+      <div className="admin-badge-picker">
+        {["", "Hot", "Mới"].map((item) => (
+          <button
+            className={value === item ? "active" : ""}
+            key={item || "none"}
+            onClick={() => onChange(item)}
+            type="button"
+          >
+            {item || "Không"}
+          </button>
+        ))}
+      </div>
     </label>
   );
 }

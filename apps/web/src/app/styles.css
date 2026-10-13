@@ -160,25 +160,20 @@ textarea {
 }
 
 .hero-backgrounds {
-  inset: 0;
-  position: absolute;
-}
-
-.hero-backgrounds img {
+  display: flex;
   height: 100%;
-  inset: 0;
-  object-fit: cover;
-  opacity: 0;
+  left: 0;
   position: absolute;
+  top: 0;
+  transition: transform 0.55s ease;
   width: 100%;
 }
 
-.hero-backgrounds img:first-child {
-  opacity: 1;
-}
-
-.hero-backgrounds img:not(:only-child) {
-  animation: heroFade calc(var(--hero-count) * 5s) infinite;
+.hero-backgrounds img {
+  flex: 0 0 100%;
+  height: 100%;
+  object-fit: cover;
+  width: 100%;
 }
 
 .hero-actions {
@@ -194,16 +189,30 @@ textarea {
   z-index: 2;
 }
 
-@keyframes heroFade {
-  0%,
-  28% {
-    opacity: 1;
-  }
+.hero-nav {
+  align-items: center;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.65);
+  border-radius: 999px;
+  box-shadow: 0 12px 32px rgba(20, 42, 24, 0.18);
+  color: var(--deep-green);
+  cursor: pointer;
+  display: inline-flex;
+  height: 48px;
+  justify-content: center;
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 48px;
+  z-index: 3;
+}
 
-  38%,
-  100% {
-    opacity: 0;
-  }
+.hero-nav-prev {
+  left: 26px;
+}
+
+.hero-nav-next {
+  right: 26px;
 }
 
 .primary-action,
@@ -499,8 +508,9 @@ textarea {
 }
 
 footer {
-  background: #fff;
-  border-top: 2px solid var(--mint);
+  background: #111411;
+  border-top: 0;
+  color: #fff;
   display: grid;
   gap: 32px;
   grid-template-columns: 1.2fr 1fr 1fr;
@@ -509,12 +519,12 @@ footer {
 
 footer h3,
 footer h4 {
-  color: var(--deep-green);
+  color: #fff;
   margin: 0 0 12px;
 }
 
 footer p {
-  color: var(--muted);
+  color: #cfd8cf;
   line-height: 1.6;
   margin: 5px 0;
 }
@@ -556,7 +566,8 @@ footer p {
 
 .footer-socials a {
   align-items: center;
-  border: 1px solid var(--line);
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.16);
   border-radius: 999px;
   display: inline-flex;
   height: 56px;
@@ -917,12 +928,23 @@ footer p {
   min-height: 100vh;
 }
 
+.admin-workspace.admin-wide {
+  display: block;
+}
+
 .admin-editor {
   background: #fbfcfa;
   border-right: 1px solid #d8e6d9;
   height: 100vh;
   overflow: auto;
   padding: 18px;
+}
+
+.admin-wide .admin-editor {
+  border-right: 0;
+  margin: 0 auto;
+  max-width: 1240px;
+  width: 100%;
 }
 
 .admin-editor-header {
@@ -1019,6 +1041,7 @@ footer p {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 8px;
+  box-shadow: 0 10px 30px rgba(35, 74, 44, 0.05);
   margin-bottom: 12px;
   padding: 14px;
 }
@@ -1097,6 +1120,51 @@ footer p {
   outline: 0;
   padding: 8px 10px;
   width: 100%;
+}
+
+.admin-input-suffix {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #d9e2d9;
+  border-radius: 8px;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  overflow: hidden;
+}
+
+.admin-input-suffix input {
+  border: 0;
+}
+
+.admin-input-suffix b {
+  color: var(--green);
+  font-size: 12px;
+  padding: 0 12px;
+}
+
+.admin-badge-picker {
+  background: #f2f7f2;
+  border: 1px solid #d9e2d9;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: repeat(3, 1fr);
+  padding: 4px;
+}
+
+.admin-badge-picker button {
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  color: var(--deep-green);
+  cursor: pointer;
+  font-weight: 800;
+  min-height: 32px;
+}
+
+.admin-badge-picker button.active {
+  background: var(--green);
+  color: #fff;
 }
 
 .admin-field textarea {
@@ -1211,7 +1279,7 @@ footer p {
 }
 
 .admin-row-card {
-  grid-template-columns: 28px minmax(0, 1fr) 116px 40px;
+  grid-template-columns: 32px minmax(260px, 1fr) 180px 44px;
 }
 
 .admin-row-card > strong,
@@ -1229,7 +1297,7 @@ footer p {
 }
 
 .admin-product-editor {
-  grid-template-columns: 28px 124px minmax(0, 1fr) 40px;
+  grid-template-columns: 32px 180px minmax(0, 1fr) 44px;
 }
 
 .admin-product-fields {

@@ -3,9 +3,10 @@
 import {
   ArrowRight,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   Search
 } from "lucide-react";
-import type { CSSProperties } from "react";
 import { useMemo, useState } from "react";
 import { type Product, type SiteData } from "@shop-flower/data";
 
@@ -146,22 +147,49 @@ function MainNav({ categories }: { categories: Array<{ id: number; name: string 
 }
 
 function Hero({ data }: { data: SiteData }) {
+  const [activeSlide, setActiveSlide] = useState(0);
   const backgrounds = data.assets.backgroundImages?.length
     ? data.assets.backgroundImages
     : [data.assets.background];
+  const slideCount = backgrounds.length;
+  const goToSlide = (direction: -1 | 1) => {
+    setActiveSlide((current) => (current + direction + slideCount) % slideCount);
+  };
 
   return (
-    <section className="hero hero-gallery" style={{ "--hero-count": backgrounds.length } as CSSProperties}>
-      <div className="hero-backgrounds">
+    <section className="hero hero-gallery">
+      <div
+        className="hero-backgrounds"
+        style={{ transform: `translateX(-${activeSlide * 100}%)` }}
+      >
         {backgrounds.map((image, index) => (
           <img
             alt=""
             key={`${image}-${index}`}
             src={image}
-            style={{ animationDelay: `${index * 5}s` }}
           />
         ))}
       </div>
+      {slideCount > 1 ? (
+        <>
+          <button
+            aria-label="Ảnh trước"
+            className="hero-nav hero-nav-prev"
+            onClick={() => goToSlide(-1)}
+            type="button"
+          >
+            <ChevronLeft size={24} />
+          </button>
+          <button
+            aria-label="Ảnh sau"
+            className="hero-nav hero-nav-next"
+            onClick={() => goToSlide(1)}
+            type="button"
+          >
+            <ChevronRight size={24} />
+          </button>
+        </>
+      ) : null}
       <div className="hero-actions">
         <a className="primary-action" href="#products">
           Xem sản phẩm <ArrowRight size={18} />
