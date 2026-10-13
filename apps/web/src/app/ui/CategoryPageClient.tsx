@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
+import { useLiveSiteData } from "./useLiveSiteData";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -19,12 +20,13 @@ const priceRanges = [
 ];
 
 export default function CategoryPageClient({
-  data,
+  data: initialData,
   initialCategory
 }: {
   data: SiteData;
   initialCategory?: string;
 }) {
+  const data = useLiveSiteData(initialData);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(initialCategory ?? "Tất cả");
   const [priceRange, setPriceRange] = useState("Tất cả giá");

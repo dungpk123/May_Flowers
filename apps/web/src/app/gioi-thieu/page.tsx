@@ -1,7 +1,7 @@
 import { getSiteData } from "../siteData";
-import SitePage from "../ui/SitePage";
+import LiveSitePage from "../ui/LiveSitePage";
 
 export default async function AboutPage() {
   const data = await getSiteData();
-  return <SitePage data={data} view="about" />;
+  return <LiveSitePage initialData={data} view="about" />;
 }

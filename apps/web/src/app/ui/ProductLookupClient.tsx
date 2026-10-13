@@ -3,8 +3,10 @@
 import { useEffect, useMemo, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
 import ProductDetailClient from "./ProductDetailClient";
+import { useLiveSiteData } from "./useLiveSiteData";
 
-export default function ProductLookupClient({ data }: { data: SiteData }) {
+export default function ProductLookupClient({ data: initialData }: { data: SiteData }) {
+  const data = useLiveSiteData(initialData);
   const [productId, setProductId] = useState("");
 
   useEffect(() => {

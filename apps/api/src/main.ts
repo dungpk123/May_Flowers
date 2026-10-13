@@ -110,8 +110,13 @@ class AppModule {}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  const allowedOrigins = (process.env.WEB_ORIGIN ?? "http://localhost:3000")
+    .split(",")
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
   app.enableCors({
-    origin: process.env.WEB_ORIGIN ?? "http://localhost:3000"
+    origin: allowedOrigins
   });
   await app.listen(Number(process.env.PORT ?? 4000));
 }
