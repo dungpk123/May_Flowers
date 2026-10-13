@@ -60,7 +60,6 @@ export default function ProductDetailClient({
         <div className="product-detail-copy">
           <h1>{product.name}</h1>
           {product.price ? <strong>{money.format(product.price)}</strong> : null}
-          {product.description ? <span>{product.description}</span> : null}
 
           <div className="product-detail-panel">
             <h2>Tiêu chí của chúng tôi</h2>
@@ -97,6 +96,8 @@ export default function ProductDetailClient({
         </div>
       </section>
 
+      {product.description ? <ProductDescription text={product.description} /> : null}
+
       {relatedProducts.length > 0 ? (
         <section className="related-products">
           <h2>Sản phẩm tương tự</h2>
@@ -119,4 +120,53 @@ export default function ProductDetailClient({
       ) : null}
     </main>
   );
+}
+
+function ProductDescription({ text }: { text: string }) {
+  const lines = text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length === 0) return null;
+
+  return (
+    <section className="product-description-section">
+      <div className="product-description-tabs">
+        <span>Mô tả</span>
+      </div>
+      <div className="product-description-content">
+        {lines.map((line, index) => {
+          const heading = line.match(/^(#{1,6})\s*(.+)$/);
+          if (heading) {
+            return heading[1].length <= 2 ? (
+              <h2 key={`${line}-${index}`}>{renderInlineMarkdown(heading[2])}</h2>
+            ) : (
+              <h3 key={`${line}-${index}`}>{renderInlineMarkdown(heading[2])}</h3>
+            );
+          }
+
+          if (/^[-*]\s+/.test(line)) {
+            return (
+              <p className="description-bullet" key={`${line}-${index}`}>
+                {renderInlineMarkdown(line.replace(/^[-*]\s+/, ""))}
+              </p>
+            );
+          }
+
+          return <p key={`${line}-${index}`}>{renderInlineMarkdown(line)}</p>;
+        })}
+      </div>
+    </section>
+  );
+}
+
+function renderInlineMarkdown(text: string) {
+  return text.split(/(\*\*[^*]+\*\*)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return <strong key={`${part}-${index}`}>{part.slice(2, -2)}</strong>;
+    }
+
+    return part;
+  });
 }
