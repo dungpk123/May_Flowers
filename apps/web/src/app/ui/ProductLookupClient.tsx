@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
+import { Footer } from "./SitePage";
 import ProductDetailClient from "./ProductDetailClient";
 import { useLiveSiteData } from "./useLiveSiteData";
 
@@ -34,6 +35,7 @@ export default function ProductLookupClient({ data: initialData }: { data: SiteD
           </a>
         </header>
         <p className="empty-state">Không tìm thấy sản phẩm.</p>
+        <Footer data={data} />
       </main>
     );
   }

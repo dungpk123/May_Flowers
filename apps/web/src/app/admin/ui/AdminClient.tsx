@@ -8,6 +8,7 @@ import { publicApiUrl } from "../../apiConfig";
 
 const apiUrl = publicApiUrl;
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
+const rememberedPasswordKey = "shop-flower-admin-password";
 
 type ContentKey = keyof SiteData["content"];
 
@@ -61,6 +62,14 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   );
 
   useEffect(() => {
+    const rememberedPassword = window.localStorage.getItem(rememberedPasswordKey);
+    if (rememberedPassword === adminPassword) {
+      setPassword(rememberedPassword);
+      setIsUnlocked(true);
+    }
+  }, []);
+
+  useEffect(() => {
     if (!toast) return;
 
     const timer = window.setTimeout(() => setToast(null), 3400);
@@ -82,6 +91,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     event.preventDefault();
 
     if (password === adminPassword) {
+      window.localStorage.setItem(rememberedPasswordKey, password);
       setIsUnlocked(true);
       setToast(null);
       return;
@@ -167,31 +177,20 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   function addCategory() {
-    setModal({
-      title: "Thêm danh mục",
-      message: "Nhập tên danh mục mới.",
-      inputLabel: "Tên danh mục",
-      confirmText: "Thêm danh mục",
-      onConfirm: (value) => {
-        const name = value.trim();
-        if (!name) return;
-
-        setData({
-          ...data,
-          categories: [
-            ...data.categories,
-            {
-              id: Date.now(),
-              name,
-              displayTitle: name,
-              sortOrder: data.categories.length + 1,
-              image: ""
-            }
-          ]
-        });
-        showToast(`Đã thêm danh mục "${name}". Bấm Lưu để cập nhật website.`, "success");
-      }
+    setData({
+      ...data,
+      categories: [
+        ...data.categories,
+        {
+          id: Date.now(),
+          name: "",
+          displayTitle: "",
+          sortOrder: data.categories.length + 1,
+          image: ""
+        }
+      ]
     });
+    showToast("Đã thêm dòng danh mục mới ở cuối danh sách.", "success");
   }
 
   function removeCategory(category: Category) {
@@ -216,31 +215,21 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   function addProduct() {
-    setModal({
-      title: "Thêm sản phẩm",
-      message: "Nhập tên sản phẩm mới.",
-      inputLabel: "Tên sản phẩm",
-      confirmText: "Thêm sản phẩm",
-      onConfirm: (value) => {
-        const name = value.trim();
-        if (!name) return;
-
-        setData({
-          ...data,
-          products: [
-            ...data.products,
-            {
-              id: Date.now(),
-              name,
-              category: data.categories[0]?.name ?? "",
-              image: "",
-              price: undefined
-            }
-          ]
-        });
-        showToast(`Đã thêm sản phẩm "${name}". Bấm Lưu để cập nhật website.`, "success");
-      }
+    setData({
+      ...data,
+      products: [
+        ...data.products,
+        {
+          id: Date.now(),
+          name: "",
+          category: data.categories[0]?.name ?? "",
+          image: "",
+          images: [],
+          price: undefined
+        }
+      ]
     });
+    showToast("Đã thêm dòng sản phẩm mới ở cuối danh sách.", "success");
   }
 
   function removeProduct(product: Product) {
@@ -595,19 +584,40 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             {data.products.map((item, index) => (
               <article className="admin-product-editor" key={item.id}>
                 <div className="admin-product-number">{index + 1}</div>
-                <ImageField
-                  label="Ảnh"
-                  value={item.image}
-                  uploading={uploadingField === `product-${item.id}`}
-                  compact
-                  onUpload={(file) =>
+                <ProductImageManager
+                  product={item}
+                  uploadingField={uploadingField}
+                  onAdd={(file) =>
                     uploadImage(
                       file,
-                      item.image,
-                      (value) => updateProduct(data, setData, item.id, { image: value }),
-                      `product-${item.id}`
+                      "",
+                      (value) =>
+                        updateProductImages(data, setData, item.id, [
+                          ...getProductImages(item),
+                          value
+                        ]),
+                      `product-${item.id}-add`
                     )
                   }
+                  onReplace={(file, imageIndex, previousUrl) =>
+                    uploadImage(
+                      file,
+                      previousUrl,
+                      (value) => {
+                        const nextImages = getProductImages(item);
+                        nextImages[imageIndex] = value;
+                        updateProductImages(data, setData, item.id, nextImages);
+                      },
+                      `product-${item.id}-${imageIndex}`
+                    )
+                  }
+                  onRemove={(imageIndex) => {
+                    const nextImages = getProductImages(item).filter(
+                      (_, currentIndex) => currentIndex !== imageIndex
+                    );
+                    updateProductImages(data, setData, item.id, nextImages);
+                    showToast("Đã xóa ảnh khỏi sản phẩm. Bấm Lưu để cập nhật website.", "success");
+                  }}
                 />
                 <div className="admin-product-fields">
                   <div className="admin-grid compact">
@@ -970,6 +980,81 @@ function ImageField({
   );
 }
 
+function ProductImageManager({
+  product,
+  uploadingField,
+  onAdd,
+  onReplace,
+  onRemove
+}: {
+  product: Product;
+  uploadingField: string;
+  onAdd: (file: File) => void;
+  onReplace: (file: File, index: number, previousUrl: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const images = getProductImages(product);
+
+  return (
+    <div className="admin-product-images">
+      <span>Ảnh sản phẩm</span>
+      {images.length > 0 ? (
+        <div className="admin-product-image-list">
+          {images.map((image, index) => (
+            <div className="admin-product-image-item" key={`${image}-${index}`}>
+              <img src={image} alt="" />
+              {index === 0 ? <em>Ảnh chính</em> : null}
+              <div>
+                <label className="admin-upload-button">
+                  <input
+                    accept="image/*"
+                    disabled={uploadingField === `product-${product.id}-${index}`}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      if (file) onReplace(file, index, image);
+                      event.target.value = "";
+                    }}
+                    type="file"
+                  />
+                  <ImageUp size={15} />
+                  {uploadingField === `product-${product.id}-${index}` ? "Đang thay..." : "Thay"}
+                </label>
+                <button
+                  className="delete-button icon-only"
+                  onClick={() => onRemove(index)}
+                  title="Xóa ảnh"
+                  type="button"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="admin-image-preview admin-product-empty-image">
+          <p>Chưa có ảnh</p>
+        </div>
+      )}
+
+      <label className="admin-upload-button add-product-image">
+        <input
+          accept="image/*"
+          disabled={uploadingField === `product-${product.id}-add`}
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            if (file) onAdd(file);
+            event.target.value = "";
+          }}
+          type="file"
+        />
+        <Plus size={16} />
+        {uploadingField === `product-${product.id}-add` ? "Đang thêm..." : "Thêm ảnh"}
+      </label>
+    </div>
+  );
+}
+
 function BackgroundManager({
   images,
   uploadingField,
@@ -1054,6 +1139,27 @@ function updateProduct(
     ...data,
     products: data.products.map((item) => (item.id === id ? { ...item, ...patch } : item))
   });
+}
+
+function updateProductImages(
+  data: SiteData,
+  setData: (data: SiteData) => void,
+  id: number,
+  images: string[]
+) {
+  const cleanedImages = images.filter((image) => image.trim());
+
+  updateProduct(data, setData, id, {
+    image: cleanedImages[0] ?? "",
+    images: cleanedImages
+  });
+}
+
+function getProductImages(product: Product) {
+  return [...(product.images ?? []), product.image].filter(
+    (image, index, list): image is string =>
+      typeof image === "string" && image.trim().length > 0 && list.indexOf(image) === index
+  );
 }
 
 function updateArticle(

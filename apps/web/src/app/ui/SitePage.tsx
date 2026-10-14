@@ -48,7 +48,7 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
 
   const filteredProducts = useMemo(() => {
     const validProducts = data.products.filter(
-      (product) => product.name.trim() || product.image.trim()
+      (product) => product.name.trim() || getProductImages(product).length > 0
     );
     const baseProducts = filterProductsByView(validProducts, view);
     const q = query.trim().toLowerCase();
@@ -272,7 +272,7 @@ function ProductArea({
               <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
                 <div className="product-image">
                   {product.badge ? <span>{product.badge}</span> : null}
-                  <img src={product.image} alt={product.name} />
+                  <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
                 </div>
                 <div className="product-info">
                   <h3>{product.name}</h3>
@@ -359,7 +359,7 @@ function SectionTitle({ title }: { title: string }) {
   );
 }
 
-function Footer({ data }: { data: SiteData }) {
+export function Footer({ data }: { data: SiteData }) {
   return (
     <footer>
       <div>
@@ -434,6 +434,13 @@ function filterProductsByView(products: Product[], view: SiteView) {
   }
 
   return products;
+}
+
+function getProductImages(product: Product) {
+  return [...(product.images ?? []), product.image].filter(
+    (image, index, list): image is string =>
+      typeof image === "string" && image.trim().length > 0 && list.indexOf(image) === index
+  );
 }
 
 function sortCategories(categories: Category[]) {

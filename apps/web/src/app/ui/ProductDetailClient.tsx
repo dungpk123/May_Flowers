@@ -1,8 +1,19 @@
 "use client";
 
-import { Search } from "lucide-react";
-import { useMemo } from "react";
+import {
+  BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
+  Clock3,
+  FileText,
+  ImageIcon,
+  RefreshCcw,
+  Search,
+  Truck
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
+import { Footer } from "./SitePage";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -38,6 +49,20 @@ export default function ProductDetailClient({
         .slice(0, 4),
     [data.products, product.category, product.id]
   );
+  const productImages = useMemo(() => getProductImages(product), [product]);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const activeImage = productImages[activeImageIndex] ?? productImages[0] ?? product.image;
+
+  useEffect(() => {
+    setActiveImageIndex(0);
+  }, [product.id]);
+
+  function moveImage(direction: -1 | 1) {
+    setActiveImageIndex((current) => {
+      if (productImages.length === 0) return 0;
+      return (current + direction + productImages.length) % productImages.length;
+    });
+  }
 
   return (
     <main>
@@ -52,9 +77,45 @@ export default function ProductDetailClient({
       </header>
 
       <section className="product-detail">
-        <div className="product-detail-image">
-          {product.badge ? <span>{product.badge}</span> : null}
-          <img src={product.image} alt={product.name} />
+        <div className="product-gallery">
+          <div className="product-detail-image">
+            {product.badge ? <span>{product.badge}</span> : null}
+            {productImages.length > 1 ? (
+              <>
+                <button
+                  aria-label="Ảnh trước"
+                  className="product-gallery-nav product-gallery-prev"
+                  onClick={() => moveImage(-1)}
+                  type="button"
+                >
+                  <ChevronLeft size={26} />
+                </button>
+                <button
+                  aria-label="Ảnh sau"
+                  className="product-gallery-nav product-gallery-next"
+                  onClick={() => moveImage(1)}
+                  type="button"
+                >
+                  <ChevronRight size={26} />
+                </button>
+              </>
+            ) : null}
+            {activeImage ? <img src={activeImage} alt={product.name} /> : null}
+          </div>
+          {productImages.length > 1 ? (
+            <div className="product-thumbnails" aria-label="Ảnh sản phẩm">
+              {productImages.map((image, index) => (
+                <button
+                  className={activeImageIndex === index ? "active" : ""}
+                  key={`${image}-${index}`}
+                  onClick={() => setActiveImageIndex(index)}
+                  type="button"
+                >
+                  <img src={image} alt={`${product.name} ${index + 1}`} />
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
 
         <div className="product-detail-copy">
@@ -94,6 +155,8 @@ export default function ProductDetailClient({
             ) : null}
           </div>
         </div>
+
+        <CustomerBenefits />
       </section>
 
       {product.description ? <ProductDescription text={product.description} /> : null}
@@ -106,7 +169,7 @@ export default function ProductDetailClient({
               <a className="product-card" href={`/san-pham?id=${item.id}`} key={item.id}>
                 <div className="product-image">
                   {item.badge ? <span>{item.badge}</span> : null}
-                  <img src={item.image} alt={item.name} />
+                  <img src={getProductImages(item)[0] ?? item.image} alt={item.name} />
                 </div>
                 <div className="product-info">
                   <h3>{item.name}</h3>
@@ -118,7 +181,60 @@ export default function ProductDetailClient({
           </div>
         </section>
       ) : null}
+      <Footer data={data} />
     </main>
+  );
+}
+
+function getProductImages(product: Product) {
+  return [...(product.images ?? []), product.image].filter(
+    (image, index, list): image is string =>
+      typeof image === "string" && image.trim().length > 0 && list.indexOf(image) === index
+  );
+}
+
+function CustomerBenefits() {
+  const benefits = [
+    {
+      icon: Clock3,
+      text: "Giao hoa cấp tốc trong vòng 60 - 120 phút"
+    },
+    {
+      icon: Truck,
+      text: "Miễn phí vận chuyển nội thành"
+    },
+    {
+      icon: FileText,
+      text: "Miễn phí thiệp, băng rôn trị giá 30,000đ"
+    },
+    {
+      icon: ImageIcon,
+      text: "Gửi hình trước và báo đơn hàng thành công"
+    },
+    {
+      icon: RefreshCcw,
+      text: "Đổi trả 100% nếu không hài lòng"
+    },
+    {
+      icon: BadgeCheck,
+      text: "Cam kết hoa tươi 3+ ngày"
+    }
+  ];
+
+  return (
+    <aside className="customer-benefits" aria-label="Quyền lợi khách hàng">
+      <h2>Quyền lợi khách hàng</h2>
+      <div className="customer-benefit-list">
+        {benefits.map(({ icon: Icon, text }) => (
+          <div className="customer-benefit-item" key={text}>
+            <span className="customer-benefit-icon">
+              <Icon size={25} />
+            </span>
+            <strong>{text}</strong>
+          </div>
+        ))}
+      </div>
+    </aside>
   );
 }
 

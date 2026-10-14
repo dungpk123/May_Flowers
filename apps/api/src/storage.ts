@@ -171,12 +171,15 @@ async function ensureDatabase(client?: PoolConnection) {
       category text not null,
       price int null,
       image text not null,
+      images text null,
       badge text null,
       description text null,
       created_at timestamp not null default current_timestamp,
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
+
+  await addColumnIfMissing(db, "products", "images", "text null after image");
 
   await db.query(`
     create table if not exists articles (
@@ -335,8 +338,8 @@ async function replaceProducts(db: Db, products: Product[]) {
   for (const product of products) {
     await db.query(
       `
-        insert into products (id, name, category, price, image, badge, description, updated_at)
-        values (?, ?, ?, ?, ?, ?, ?, current_timestamp)
+        insert into products (id, name, category, price, image, images, badge, description, updated_at)
+        values (?, ?, ?, ?, ?, ?, ?, ?, current_timestamp)
       `,
       [
         product.id,
@@ -344,6 +347,7 @@ async function replaceProducts(db: Db, products: Product[]) {
         product.category,
         product.price ?? null,
         product.image,
+        JSON.stringify(normalizeProductImages(product)),
         product.badge ?? null,
         product.description ?? null
       ]
@@ -500,6 +504,7 @@ type DbProductRow = {
   category: string;
   price: number | null;
   image: string;
+  images?: string | null;
   badge: string | null;
   description: string | null;
 };
@@ -598,15 +603,47 @@ function categoryFromRow(row: DbCategoryRow): Category {
 }
 
 function productFromRow(row: DbProductRow): Product {
+  const images = parseProductImages(row.images, row.image);
+
   return {
     id: Number(row.id),
     name: row.name,
     category: row.category,
     price: row.price ?? undefined,
-    image: row.image,
+    image: images[0] ?? row.image,
+    images,
     badge: row.badge ?? undefined,
     description: row.description ?? undefined
   };
+}
+
+function normalizeProductImages(product: Product) {
+  const images = [
+    ...(product.images ?? []),
+    product.image
+  ].filter((item, index, list): item is string =>
+    typeof item === "string" && item.trim().length > 0 && list.indexOf(item) === index
+  );
+
+  return images;
+}
+
+function parseProductImages(value: string | null | undefined, fallback: string) {
+  if (value) {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) {
+        const images = parsed.filter(
+          (item): item is string => typeof item === "string" && item.trim().length > 0
+        );
+        if (images.length > 0) return images;
+      }
+    } catch {
+      return fallback ? [fallback] : [];
+    }
+  }
+
+  return fallback ? [fallback] : [];
 }
 
 function articleFromRow(row: DbArticleRow): Article {

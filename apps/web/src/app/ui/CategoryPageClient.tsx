@@ -3,6 +3,7 @@
 import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Product, SiteData } from "@shop-flower/data";
+import { Footer } from "./SitePage";
 import { useLiveSiteData } from "./useLiveSiteData";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -145,6 +146,7 @@ export default function CategoryPageClient({
           </div>
         </div>
       </section>
+      <Footer data={data} />
     </main>
   );
 }
@@ -160,7 +162,7 @@ function ProductCard({ product }: { product: Product }) {
     <a className="product-card" href={`/san-pham?id=${product.id}`}>
       <div className="product-image">
         {product.badge ? <span>{product.badge}</span> : null}
-        <img src={product.image} alt={product.name} />
+        <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
       </div>
       <div className="product-info">
         <h3>{product.name}</h3>
@@ -168,5 +170,12 @@ function ProductCard({ product }: { product: Product }) {
         <em>Xem chi tiết</em>
       </div>
     </a>
+  );
+}
+
+function getProductImages(product: Product) {
+  return [...(product.images ?? []), product.image].filter(
+    (image, index, list): image is string =>
+      typeof image === "string" && image.trim().length > 0 && list.indexOf(image) === index
   );
 }
