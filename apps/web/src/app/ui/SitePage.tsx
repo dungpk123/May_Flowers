@@ -160,20 +160,62 @@ function Header({
   query: string;
   setQuery: (value: string) => void;
 }) {
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchTerm = query.trim().toLowerCase();
+  const searchResults = searchTerm
+    ? data.products
+        .filter((product) =>
+          `${product.name} ${product.category} ${product.description ?? ""}`
+            .toLowerCase()
+            .includes(searchTerm)
+        )
+        .slice(0, 8)
+    : [];
+
   return (
     <header className="site-header">
       <a className="brand" href="/">
         <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
       </a>
 
-      <label className="search-box">
-        <Search size={19} />
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Tìm kiếm sản phẩm"
-        />
-      </label>
+      <div className={`search-shell ${isSearchOpen ? "is-open" : ""}`}>
+        <button
+          aria-label="Mở tìm kiếm"
+          className="search-toggle"
+          onClick={() => setIsSearchOpen(true)}
+          type="button"
+        >
+          <Search size={20} />
+        </button>
+        <label className="search-box">
+          <Search size={19} />
+          <input
+            autoFocus={isSearchOpen}
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Tìm kiếm sản phẩm"
+            onFocus={() => setIsSearchOpen(true)}
+          />
+        </label>
+        {isSearchOpen && searchTerm ? (
+          <div className="search-results" role="listbox">
+            {searchResults.length > 0 ? (
+              searchResults.map((product) => (
+                <a
+                  href={`/san-pham?id=${product.id}`}
+                  key={product.id}
+                  onClick={() => setIsSearchOpen(false)}
+                >
+                  <img src={getProductImages(product)[0] ?? product.image} alt="" />
+                  <span>{product.name}</span>
+                </a>
+              ))
+            ) : (
+              <p>Không tìm thấy sản phẩm phù hợp.</p>
+            )}
+          </div>
+        ) : null}
+      </div>
     </header>
   );
 }

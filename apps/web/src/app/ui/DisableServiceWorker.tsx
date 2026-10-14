@@ -4,21 +4,12 @@ import { useEffect } from "react";
 
 export default function DisableServiceWorker() {
   useEffect(() => {
-    if ("serviceWorker" in navigator) {
-      navigator.serviceWorker.getRegistrations().then((registrations) => {
-        registrations.forEach((registration) => {
-          registration.unregister();
-        });
-      });
-    }
-
-    if ("caches" in window) {
-      caches.keys().then((names) => {
-        for (const name of names) {
-          caches.delete(name);
-        }
-      });
-    }
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      registrations
+        .filter((registration) => registration.active?.scriptURL.includes("firebase-messaging-sw.js"))
+        .forEach((registration) => registration.unregister());
+    });
   }, []);
 
   return null;

@@ -22,6 +22,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Article, Category, Order, OrderStatus, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
 import { publicApiUrl } from "../../apiConfig";
+import AdminPushControls from "./AdminPushControls";
 
 const apiUrl = publicApiUrl;
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
@@ -369,17 +370,18 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   async function save() {
     if (isSaving) return false;
 
+    const uploadTotal = countPendingUploads(pendingProductUploads);
     setIsSaving(true);
     showToast("Đang lưu thay đổi...", "info");
-    setSaveProgress({ current: 0, total: countPendingUploads(pendingProductUploads), message: "Đang chuẩn bị lưu..." });
+    setSaveProgress({ current: 0, total: uploadTotal, message: uploadTotal > 0 ? `Đang chuẩn bị tải ${uploadTotal} ảnh...` : "Đang chuẩn bị lưu..." });
 
     try {
-      const dataToSave = await uploadPendingProductImages();
+      const dataToSave = await uploadPendingProductImages(uploadTotal);
       if (!dataToSave) return false;
 
       setSaveProgress({
-        current: countPendingUploads(pendingProductUploads),
-        total: countPendingUploads(pendingProductUploads),
+        current: uploadTotal,
+        total: uploadTotal,
         message: "Đang lưu dữ liệu website..."
       });
 
@@ -417,7 +419,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     }
   }
 
-  async function uploadPendingProductImages() {
+  async function uploadPendingProductImages(uploadTotal: number) {
     const pending = Object.entries(pendingProductUploads).flatMap(([productId, uploads]) =>
       uploads.map((upload) => ({ ...upload, productId: Number(productId) }))
     );
@@ -429,7 +431,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
       const upload = pending[index];
       setSaveProgress({
         current: index + 1,
-        total: pending.length,
+        total: uploadTotal || pending.length,
         message: `Đang tải ảnh ${index + 1}/${pending.length} lên Cloudinary...`
       });
       showToast(`Đang tải ảnh ${index + 1}/${pending.length} lên Cloudinary...`, "info");
@@ -758,6 +760,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <h1>Chỉnh sửa nội dung</h1>
           </div>
           <div className="admin-header-actions">
+            <AdminPushControls />
             <button className="admin-exit-button" disabled={isSaving || isLoadingLiveData || Boolean(uploadingField)} type="button" onClick={exitAdmin}>
               <LogOut size={18} /> Thoát
             </button>

@@ -107,6 +107,12 @@ textarea {
   z-index: 10;
 }
 
+.search-shell {
+  max-width: 620px;
+  position: relative;
+  width: 100%;
+}
+
 .brand {
   align-items: center;
   display: flex;
@@ -131,9 +137,66 @@ textarea {
   display: flex;
   gap: 10px;
   height: 48px;
-  max-width: 620px;
   padding: 0 18px;
   width: 100%;
+}
+
+.search-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  display: none;
+  justify-content: center;
+  padding: 8px;
+}
+
+.search-results {
+  background: #fff;
+  border: 1px solid #e6ebe6;
+  border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(26, 67, 35, 0.18);
+  left: 0;
+  overflow: hidden;
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 30;
+}
+
+.search-results a {
+  align-items: center;
+  border-bottom: 1px solid #eef2ee;
+  display: flex;
+  gap: 12px;
+  min-height: 58px;
+  padding: 8px 14px;
+}
+
+.search-results a:last-child {
+  border-bottom: 0;
+}
+
+.search-results a:hover {
+  background: #f2f8f2;
+}
+
+.search-results img {
+  border-radius: 50%;
+  height: 42px;
+  object-fit: cover;
+  width: 42px;
+}
+
+.search-results span {
+  font-weight: 700;
+}
+
+.search-results p {
+  color: var(--muted);
+  margin: 0;
+  padding: 16px;
 }
 
 .search-box input {
@@ -1455,6 +1518,41 @@ footer p {
   gap: 10px;
 }
 
+.admin-push-controls {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.admin-push-controls button {
+  align-items: center;
+  border: 1px solid #cfe5d3;
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 6px;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.admin-install-button {
+  background: #eef8ef;
+  color: var(--deep-green);
+}
+
+.admin-notification-button {
+  background: var(--green);
+  color: #fff;
+}
+
+.admin-push-controls span {
+  color: var(--muted);
+  font-size: 11px;
+  max-width: 180px;
+}
+
 .admin-editor-header .admin-exit-button {
   background: #eef7ef;
   color: var(--deep-green);
@@ -2555,9 +2653,10 @@ footer p {
   }
 
   .site-header {
-    gap: 12px;
-    grid-template-columns: 1fr;
-    padding: 14px;
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    padding: 8px 14px;
   }
 
   .brand {
@@ -2565,8 +2664,47 @@ footer p {
   }
 
   .brand img {
-    height: 54px;
-    max-width: 160px;
+    height: 48px;
+    max-width: 128px;
+  }
+
+  .search-shell {
+    align-items: center;
+    display: flex;
+    justify-content: flex-end;
+    max-width: none;
+    width: auto;
+  }
+
+  .search-toggle {
+    display: inline-flex;
+  }
+
+  .search-shell:not(.is-open) .search-box {
+    display: none;
+  }
+
+  .search-shell.is-open {
+    background: #faf8f5;
+    inset: 8px 8px auto;
+    max-width: none;
+    padding: 0;
+    position: absolute;
+    width: auto;
+    z-index: 20;
+  }
+
+  .search-shell.is-open .search-toggle {
+    display: none;
+  }
+
+  .search-shell.is-open .search-box {
+    display: flex;
+    max-width: none;
+  }
+
+  .search-results {
+    top: calc(100% + 8px);
   }
 
   .main-nav {
@@ -2710,11 +2848,25 @@ footer p {
 
 @media (max-width: 460px) {
   .category-grid,
-  .product-grid,
   .article-grid,
   .benefits,
   footer {
     grid-template-columns: 1fr;
+  }
+
+  .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+
+  .product-info {
+    padding: 8px 5px 10px;
+  }
+
+  .product-info h3 {
+    font-size: 12px;
   }
 }
 

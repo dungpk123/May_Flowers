@@ -3,6 +3,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Module,
   Param,
@@ -14,7 +15,7 @@ import {
 } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { FileInterceptor } from "@nestjs/platform-express";
-import type { SiteData } from "@shop-flower/data";
+import type { Order, SiteData } from "@shop-flower/data";
 import multer from "multer";
 import { deleteImageByUrl, isCloudinaryConfigured, uploadImageBuffer } from "./cloudinary";
 import {
@@ -22,9 +23,21 @@ import {
   readOrders,
   readSiteData,
   saveSiteData,
+  readPushSubscriptions,
+  removePushSubscription,
+  savePushSubscription,
   storageMode,
   updateOrderStatus
 } from "./storage";
+import webpush from "web-push";
+
+const vapidPublicKey = process.env.VAPID_PUBLIC_KEY ?? "";
+const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY ?? "";
+const vapidSubject = process.env.VAPID_SUBJECT ?? "mailto:admin@mayflowers.shop";
+
+if (vapidPublicKey && vapidPrivateKey) {
+  webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey);
+}
 
 @Controller()
 class AppController {
@@ -87,7 +100,29 @@ class AppController {
     if (!body.productName || !body.ordererName || !body.ordererPhone) {
       throw new BadRequestException("Vui lòng điền đầy đủ thông tin bắt buộc.");
     }
-    return createOrder(body);
+    const order = await createOrder(body);
+    await notifyNewOrder(order);
+    return order;
+  }
+
+  @Get("push/config")
+  pushConfig() {
+    return { enabled: Boolean(vapidPublicKey && vapidPrivateKey), publicKey: vapidPublicKey };
+  }
+
+  @Post("push/subscribe")
+  async subscribePush(@Body() body: any) {
+    if (!body?.endpoint || !body?.keys?.p256dh || !body?.keys?.auth) {
+      throw new BadRequestException("Subscription thông báo không hợp lệ.");
+    }
+    await savePushSubscription(body);
+    return { ok: true };
+  }
+
+  @Delete("push/subscribe")
+  async unsubscribePush(@Body("endpoint") endpoint: string) {
+    if (endpoint) await removePushSubscription(endpoint);
+    return { ok: true };
   }
 
   @Put("orders/:id/status")
@@ -158,3 +193,27 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+async function notifyNewOrder(order: Order) {
+  if (!vapidPublicKey || !vapidPrivateKey) return;
+
+  const subscriptions = await readPushSubscriptions();
+  const payload = JSON.stringify({
+    title: "Đơn hàng mới",
+    body: `${order.orderCode} - ${order.productName}`,
+    url: "/admin",
+    orderCode: order.orderCode
+  });
+
+  await Promise.all(
+    subscriptions.map(async (subscription) => {
+      try {
+        await webpush.sendNotification(subscription, payload);
+      } catch (error: any) {
+        if (error?.statusCode === 404 || error?.statusCode === 410) {
+          await removePushSubscription(subscription.endpoint);
+        }
+      }
+    })
+  );
+}

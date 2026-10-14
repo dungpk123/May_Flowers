@@ -1,4 +1,5 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
 import { dirname, join } from "node:path";
 import { config } from "dotenv";
 import mysql, {
@@ -23,6 +24,7 @@ config({ path: join(process.cwd(), "..", "..", ".env") });
 
 const dataFile = join(__dirname, "..", "data", "site-data.json");
 const ordersFile = join(__dirname, "..", "data", "orders.json");
+const pushSubscriptionsFile = join(__dirname, "..", "data", "push-subscriptions.json");
 const databaseUrl = process.env.DATABASE_URL;
 const databaseName = normalizeDatabaseName(process.env.DATABASE_NAME || "shop_flower");
 
@@ -240,6 +242,66 @@ export async function updateOrderStatus(
   return updatedOrder;
 }
 
+export type PushSubscriptionInput = {
+  endpoint: string;
+  expirationTime?: number | null;
+  keys: { p256dh: string; auth: string };
+};
+
+export async function savePushSubscription(subscription: PushSubscriptionInput) {
+  const id = createHash("sha256").update(subscription.endpoint).digest("hex");
+
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      await pool.query(
+        `insert into push_subscriptions (id, endpoint, subscription_json)
+         values (?, ?, ?)
+         on duplicate key update endpoint = values(endpoint), subscription_json = values(subscription_json)`,
+        [id, subscription.endpoint, JSON.stringify(subscription)]
+      );
+      return;
+    } catch (error) {
+      console.warn("Failed to save push subscription to database:", error);
+    }
+  }
+
+  const subscriptions = readPushSubscriptionsFile();
+  const next = subscriptions.filter((item) => item.endpoint !== subscription.endpoint);
+  next.push(subscription);
+  savePushSubscriptions(next);
+}
+
+export async function removePushSubscription(endpoint: string) {
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      await pool.query("delete from push_subscriptions where endpoint = ?", [endpoint]);
+    } catch (error) {
+      console.warn("Failed to remove push subscription from database:", error);
+    }
+  }
+
+  savePushSubscriptions(readPushSubscriptionsFile().filter((item) => item.endpoint !== endpoint));
+}
+
+export async function readPushSubscriptions(): Promise<PushSubscriptionInput[]> {
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      const rows = await queryRows<{ subscription_json: string }>(
+        pool,
+        "select subscription_json from push_subscriptions"
+      );
+      return rows.flatMap((row) => parsePushSubscription(row.subscription_json));
+    } catch (error) {
+      console.warn("Failed to read push subscriptions from database:", error);
+    }
+  }
+
+  return readPushSubscriptionsFile();
+}
+
 async function ensureDatabase(client?: PoolConnection) {
   if (!pool || databaseReady) return;
 
@@ -360,6 +422,16 @@ async function ensureDatabase(client?: PoolConnection) {
       delivery_address text not null,
       message text null,
       status varchar(32) not null default 'pending',
+      created_at timestamp not null default current_timestamp,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
+    )
+  `);
+
+  await db.query(`
+    create table if not exists push_subscriptions (
+      id varchar(64) primary key,
+      endpoint text not null,
+      subscription_json text not null,
       created_at timestamp not null default current_timestamp,
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
@@ -901,4 +973,33 @@ function readOrdersJson(): Order[] {
 function saveOrdersJson(orders: Order[]) {
   mkdirSync(dirname(ordersFile), { recursive: true });
   writeFileSync(ordersFile, JSON.stringify(orders, null, 2), "utf8");
+}
+
+function readPushSubscriptionsFile(): PushSubscriptionInput[] {
+  if (!existsSync(pushSubscriptionsFile)) return [];
+  try {
+    const parsed = JSON.parse(readFileSync(pushSubscriptionsFile, "utf8"));
+    return Array.isArray(parsed) ? parsed.flatMap(parsePushSubscription) : [];
+  } catch {
+    return [];
+  }
+}
+
+function savePushSubscriptions(subscriptions: PushSubscriptionInput[]) {
+  mkdirSync(dirname(pushSubscriptionsFile), { recursive: true });
+  writeFileSync(pushSubscriptionsFile, JSON.stringify(subscriptions, null, 2), "utf8");
+}
+
+function parsePushSubscription(value: unknown): PushSubscriptionInput[] {
+  if (!value || typeof value !== "object") return [];
+  const item = value as Partial<PushSubscriptionInput>;
+  if (
+    typeof item.endpoint !== "string" ||
+    !item.keys ||
+    typeof item.keys.p256dh !== "string" ||
+    typeof item.keys.auth !== "string"
+  ) {
+    return [];
+  }
+  return [item as PushSubscriptionInput];
 }
