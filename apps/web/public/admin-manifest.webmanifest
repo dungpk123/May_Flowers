@@ -2,6 +2,7 @@
   "name": "May Flowers - Quản trị",
   "short_name": "May Flowers Admin",
   "description": "Trang quản trị đơn hàng và nội dung May Flowers",
+  "id": "/admin",
   "start_url": "/admin",
   "scope": "/admin",
   "display": "standalone",
@@ -10,15 +11,15 @@
   "icons": [
     {
       "src": "/img/logo.png",
-      "sizes": "192x192",
+      "sizes": "any",
       "type": "image/png",
       "purpose": "any"
     },
     {
       "src": "/img/logo.png",
-      "sizes": "512x512",
+      "sizes": "any",
       "type": "image/png",
-      "purpose": "any maskable"
+      "purpose": "any"
     }
   ]
 }

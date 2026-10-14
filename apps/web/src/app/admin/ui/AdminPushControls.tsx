@@ -24,10 +24,21 @@ export default function AdminPushControls() {
     };
     window.addEventListener("beforeinstallprompt", onBeforeInstall);
 
-    void fetch(`${publicApiUrl}/push/config`, { cache: "no-store" })
-      .then((response) => response.json())
-      .then((config) => setPushEnabled(Boolean(config.enabled)))
-      .catch(() => setPushEnabled(false));
+    void Promise.all([
+      fetch(`${publicApiUrl}/push/config`, { cache: "no-store" }),
+      navigator.serviceWorker?.getRegistration("/admin")
+    ])
+      .then(async ([response, registration]) => {
+        if (!response.ok) throw new Error("push_config_unavailable");
+        const config = await response.json();
+        setPushEnabled(Boolean(config.enabled));
+        const subscription = await registration?.pushManager.getSubscription();
+        setSubscribed(Boolean(subscription));
+      })
+      .catch(() => {
+        setPushEnabled(false);
+        setSubscribed(false);
+      });
 
     return () => window.removeEventListener("beforeinstallprompt", onBeforeInstall);
   }, []);
@@ -57,7 +68,10 @@ export default function AdminPushControls() {
 
     try {
       const registration = await navigator.serviceWorker.register("/admin-sw.js", { scope: "/admin" });
-      const config = await fetch(`${publicApiUrl}/push/config`, { cache: "no-store" }).then((response) => response.json());
+      const configResponse = await fetch(`${publicApiUrl}/push/config`, { cache: "no-store" });
+      if (!configResponse.ok) throw new Error("push_config_unavailable");
+      const config = await configResponse.json();
+      if (!config.enabled || !config.publicKey) throw new Error("push_config_incomplete");
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey: urlBase64ToUint8Array(config.publicKey)
