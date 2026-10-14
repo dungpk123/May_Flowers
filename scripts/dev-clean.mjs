@@ -7,11 +7,15 @@ const nextDir = resolve(root, "apps", "web", ".next");
 const ports = [3000, 4000];
 
 function runPowerShell(command) {
-  return execFileSync(
-    "powershell",
-    ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
-    { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
-  );
+  try {
+    return execFileSync(
+      "powershell",
+      ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", command],
+      { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] }
+    );
+  } catch {
+    return "";
+  }
 }
 
 function killPort(port) {
