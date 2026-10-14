@@ -1186,7 +1186,7 @@ footer p {
 }
 
 .admin-toast {
-  align-items: start;
+  align-items: flex-start;
   animation: admin-toast-in 0.18s ease-out;
   background: #fff;
   border: 1px solid #cfe5d3;
@@ -1288,6 +1288,40 @@ footer p {
   max-width: 460px;
   padding: 22px;
   width: min(100%, 460px);
+}
+
+.admin-image-modal {
+  max-height: min(760px, calc(100vh - 48px));
+  max-width: 860px;
+  overflow: auto;
+  width: min(100%, 860px);
+}
+
+.admin-image-modal-header {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.admin-image-modal-header > button {
+  align-items: center;
+  background: #f1f6f1;
+  border: 0;
+  border-radius: 999px;
+  color: var(--muted);
+  cursor: pointer;
+  display: inline-flex;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  width: 36px;
+}
+
+.admin-image-modal-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .admin-modal p,
@@ -1426,7 +1460,7 @@ footer p {
 }
 
 .admin-grid.compact {
-  align-items: start;
+  align-items: flex-start;
 }
 
 .admin-grid.one-column {
@@ -1682,7 +1716,7 @@ footer p {
 
 .admin-row-card,
 .admin-product-editor {
-  align-items: start;
+  align-items: flex-start;
   border: 1px solid var(--line);
   border-radius: 12px;
   display: grid;

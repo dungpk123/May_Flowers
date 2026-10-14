@@ -57,6 +57,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [uploadingField, setUploadingField] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
   const [modal, setModal] = useState<AdminModal | null>(null);
+  const [imageModalProductId, setImageModalProductId] = useState<number | null>(null);
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(data) !== JSON.stringify(savedData),
     [data, savedData]
@@ -143,12 +144,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     });
   }
 
-  async function uploadImage(
-    file: File,
-    previousUrl: string,
-    onUploaded: (url: string) => void,
-    fieldId: string
-  ) {
+  async function uploadImageFile(file: File, previousUrl: string, fieldId: string) {
     setUploadingField(fieldId);
     showToast(previousUrl ? "Đang xóa ảnh cũ và thay ảnh mới..." : "Đang tải ảnh...", "info");
 
@@ -161,19 +157,41 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         method: "POST",
         body: formData
       });
+      const contentType = response.headers.get("content-type") ?? "";
+      const result = contentType.includes("application/json")
+        ? await response.json()
+        : { message: await response.text() };
 
-      const result = await response.json();
       if (!response.ok || !result.url) {
-        showToast(result.message || result.error || "Chưa thay được ảnh.", "error");
-        return;
+        showToast(
+          result.message ||
+            result.error ||
+            `Chưa thay được ảnh. Server trả lỗi ${response.status}.`,
+          "error"
+        );
+        return "";
       }
 
-      onUploaded(result.url);
-      showToast("Đã thay ảnh. Bấm Lưu để cập nhật website.", "success");
-    } catch {
-      showToast("Chưa thay được ảnh. Kiểm tra server rồi thử lại.", "error");
+      return result.url as string;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Không rõ lỗi";
+      showToast(`Chưa thay được ảnh: ${message}.`, "error");
+      return "";
     } finally {
       setUploadingField("");
+    }
+  }
+
+  async function uploadImage(
+    file: File,
+    previousUrl: string,
+    onUploaded: (url: string) => void,
+    fieldId: string
+  ) {
+    const url = await uploadImageFile(file, previousUrl, fieldId);
+    if (url) {
+      onUploaded(url);
+      showToast("Đã thay ảnh. Bấm Lưu để cập nhật website.", "success");
     }
   }
 
@@ -219,7 +237,6 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     setData({
       ...data,
       products: [
-        ...data.products,
         {
           id: Date.now(),
           name: "",
@@ -227,10 +244,11 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           image: "",
           images: [],
           price: undefined
-        }
+        },
+        ...data.products
       ]
     });
-    showToast("Đã thêm dòng sản phẩm mới ở cuối danh sách.", "success");
+    showToast("Đã thêm dòng sản phẩm mới ở đầu danh sách.", "success");
   }
 
   function removeProduct(product: Product) {
@@ -588,18 +606,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 <ProductImageManager
                   product={item}
                   uploadingField={uploadingField}
-                  onAdd={(file) =>
-                    uploadImage(
-                      file,
-                      "",
-                      (value) =>
-                        updateProductImages(data, setData, item.id, [
-                          ...getProductImages(item),
-                          value
-                        ]),
-                      `product-${item.id}-add`
-                    )
-                  }
+                  onOpenManager={() => setImageModalProductId(item.id)}
                   onReplace={(file, imageIndex, previousUrl) =>
                     uploadImage(
                       file,
@@ -758,6 +765,62 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         </section>
       ) : null}
       {modal ? <AdminModalDialog modal={modal} onClose={() => setModal(null)} /> : null}
+      {imageModalProductId ? (
+        <ProductImagesDialog
+          product={data.products.find((item) => item.id === imageModalProductId)}
+          uploadingField={uploadingField}
+          onClose={() => setImageModalProductId(null)}
+          onAdd={async (files) => {
+            const product = data.products.find((item) => item.id === imageModalProductId);
+            if (!product || files.length === 0) return;
+
+            const urls: string[] = [];
+            for (let index = 0; index < files.length; index += 1) {
+              const url = await uploadImageFile(
+                files[index],
+                "",
+                `product-${product.id}-bulk`
+              );
+              if (url) urls.push(url);
+            }
+
+            if (urls.length === 0) return;
+
+            updateProductImages(data, setData, product.id, [
+              ...getProductImages(product),
+              ...urls
+            ]);
+            showToast(`Đã thêm ${urls.length} ảnh. Bấm Lưu để cập nhật website.`, "success");
+          }}
+          onReplace={(file, imageIndex, previousUrl) => {
+            const product = data.products.find((item) => item.id === imageModalProductId);
+            if (!product) return;
+
+            void uploadImage(
+              file,
+              previousUrl,
+              (value) => {
+                const nextImages = getProductImages(product);
+                nextImages[imageIndex] = value;
+                updateProductImages(data, setData, product.id, nextImages);
+              },
+              `product-${product.id}-${imageIndex}`
+            );
+          }}
+          onRemove={(imageIndex) => {
+            const product = data.products.find((item) => item.id === imageModalProductId);
+            if (!product) return;
+
+            updateProductImages(
+              data,
+              setData,
+              product.id,
+              getProductImages(product).filter((_, currentIndex) => currentIndex !== imageIndex)
+            );
+            showToast("Đã xóa ảnh khỏi sản phẩm. Bấm Lưu để cập nhật website.", "success");
+          }}
+        />
+      ) : null}
     </main>
   );
 }
@@ -984,13 +1047,13 @@ function ImageField({
 function ProductImageManager({
   product,
   uploadingField,
-  onAdd,
+  onOpenManager,
   onReplace,
   onRemove
 }: {
   product: Product;
   uploadingField: string;
-  onAdd: (file: File) => void;
+  onOpenManager: () => void;
   onReplace: (file: File, index: number, previousUrl: string) => void;
   onRemove: (index: number) => void;
 }) {
@@ -1038,20 +1101,112 @@ function ProductImageManager({
         </div>
       )}
 
-      <label className="admin-upload-button add-product-image">
-        <input
-          accept="image/*"
-          disabled={uploadingField === `product-${product.id}-add`}
-          onChange={(event) => {
-            const file = event.target.files?.[0];
-            if (file) onAdd(file);
-            event.target.value = "";
-          }}
-          type="file"
-        />
+      <button
+        className="admin-upload-button add-product-image"
+        onClick={onOpenManager}
+        type="button"
+      >
         <Plus size={16} />
-        {uploadingField === `product-${product.id}-add` ? "Đang thêm..." : "Thêm ảnh"}
-      </label>
+        Thêm ảnh
+      </button>
+    </div>
+  );
+}
+
+function ProductImagesDialog({
+  product,
+  uploadingField,
+  onAdd,
+  onClose,
+  onReplace,
+  onRemove
+}: {
+  product?: Product;
+  uploadingField: string;
+  onAdd: (files: File[]) => void | Promise<void>;
+  onClose: () => void;
+  onReplace: (file: File, index: number, previousUrl: string) => void;
+  onRemove: (index: number) => void;
+}) {
+  const images = product ? getProductImages(product) : [];
+  const isUploading = uploadingField.includes("product-");
+
+  if (!product) return null;
+
+  return (
+    <div className="admin-modal-backdrop" role="presentation">
+      <div className="admin-modal admin-image-modal" role="dialog" aria-modal="true">
+        <div className="admin-image-modal-header">
+          <div>
+            <p>Quản trị website</p>
+            <h2>Ảnh sản phẩm</h2>
+            <span>{product.name || "Sản phẩm chưa đặt tên"}</span>
+          </div>
+          <button type="button" onClick={onClose} aria-label="Đóng">
+            <X size={18} />
+          </button>
+        </div>
+
+        {images.length > 0 ? (
+          <div className="admin-image-modal-grid">
+            {images.map((image, index) => (
+              <div className="admin-product-image-item" key={`${image}-${index}`}>
+                <img src={image} alt="" />
+                {index === 0 ? <em>Ảnh chính</em> : null}
+                <div>
+                  <label className="admin-upload-button">
+                    <input
+                      accept="image/*"
+                      disabled={uploadingField === `product-${product.id}-${index}`}
+                      onChange={(event) => {
+                        const file = event.target.files?.[0];
+                        if (file) onReplace(file, index, image);
+                        event.target.value = "";
+                      }}
+                      type="file"
+                    />
+                    <ImageUp size={15} />
+                    {uploadingField === `product-${product.id}-${index}` ? "Đang thay..." : "Thay"}
+                  </label>
+                  <button
+                    className="delete-button icon-only"
+                    onClick={() => onRemove(index)}
+                    title="Xóa ảnh"
+                    type="button"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="admin-image-preview admin-product-empty-image">
+            <p>Chưa có ảnh</p>
+          </div>
+        )}
+
+        <label className="admin-upload-button add-product-image">
+          <input
+            accept="image/*"
+            disabled={isUploading}
+            multiple
+            onChange={(event) => {
+              const files = Array.from(event.target.files ?? []);
+              if (files.length > 0) void onAdd(files);
+              event.target.value = "";
+            }}
+            type="file"
+          />
+          <Plus size={16} />
+          {isUploading ? "Đang thêm ảnh..." : "Chọn nhiều ảnh"}
+        </label>
+        <div className="admin-modal-actions">
+          <button className="ghost-modal-button" onClick={onClose} type="button">
+            Đóng
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -67,7 +67,7 @@ class AppController {
   @UseInterceptors(
     FileInterceptor("file", {
       storage: multer.memoryStorage(),
-      limits: { fileSize: 5 * 1024 * 1024 },
+      limits: { fileSize: 15 * 1024 * 1024 },
       fileFilter: (_request, file, callback) => {
         if (!file.mimetype.startsWith("image/")) {
           callback(new BadRequestException("Chỉ chấp nhận file ảnh."), false);
