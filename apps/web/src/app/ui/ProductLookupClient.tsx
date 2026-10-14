@@ -5,10 +5,10 @@ import type { SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
 import ProductDetailClient from "./ProductDetailClient";
 import SiteHeadClient from "./SiteHeadClient";
-import { useLiveSiteData } from "./useLiveSiteData";
+import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
 
 export default function ProductLookupClient({ data: initialData }: { data: SiteData }) {
-  const data = useLiveSiteData(initialData);
+  const { data, isLoading } = useLiveSiteData(initialData);
   const [productId, setProductId] = useState("");
 
   useEffect(() => {
@@ -26,6 +26,8 @@ export default function ProductLookupClient({ data: initialData }: { data: SiteD
     () => data.products.find((item) => String(item.id) === productId),
     [data.products, productId]
   );
+
+  if (isLoading) return <SiteLoadingScreen />;
 
   if (!product) {
     return (

@@ -194,23 +194,32 @@ function MainNav({ categories }: { categories: Category[] }) {
 
 function Hero({ data }: { data: SiteData }) {
   const [activeSlide, setActiveSlide] = useState(0);
-  const backgrounds = data.assets.backgroundImages?.length
+  const backgrounds = (data.assets.backgroundImages?.length
     ? data.assets.backgroundImages
-    : [data.assets.background];
+    : [data.assets.background]
+  ).filter((image) => /^https?:\/\//i.test(image.trim()));
   const slideCount = backgrounds.length;
   const goToSlide = (direction: -1 | 1) => {
     setActiveSlide((current) => (current + direction + slideCount) % slideCount);
   };
 
+  useEffect(() => {
+    if (slideCount < 2) return;
+    const timer = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % slideCount);
+    }, 6500);
+    return () => window.clearInterval(timer);
+  }, [slideCount]);
+
   return (
     <section className="hero hero-gallery">
       <div
         className="hero-backgrounds"
-        style={{ transform: `translateX(-${activeSlide * 100}%)` }}
       >
         {backgrounds.map((image, index) => (
           <img
             alt=""
+            className={index === activeSlide ? "active" : ""}
             key={`${image}-${index}`}
             src={image}
           />
@@ -246,11 +255,15 @@ function Hero({ data }: { data: SiteData }) {
 }
 
 function PageHero({ title, data }: { title: string; data: SiteData }) {
+  const background = /^https?:\/\//i.test(data.assets.background.trim())
+    ? data.assets.background
+    : "";
+
   return (
     <section
       className="page-hero"
       style={{
-        backgroundImage: `url(${data.assets.background})`
+        backgroundImage: background ? `url(${background})` : undefined
       }}
     >
       <h1>{title}</h1>

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { Category, Product, SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
 import SiteHeadClient from "./SiteHeadClient";
-import { useLiveSiteData } from "./useLiveSiteData";
+import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -28,7 +28,7 @@ export default function CategoryPageClient({
   data: SiteData;
   initialCategory?: string;
 }) {
-  const data = useLiveSiteData(initialData);
+  const { data, isLoading } = useLiveSiteData(initialData);
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState(initialCategory ?? "Tất cả");
   const [priceRange, setPriceRange] = useState("Tất cả giá");
@@ -74,6 +74,8 @@ export default function CategoryPageClient({
       return a.id - b.id;
     });
   }, [category, data.products, priceRange, query, sort]);
+
+  if (isLoading) return <SiteLoadingScreen />;
 
   return (
     <main>

@@ -605,16 +605,19 @@ function saveJsonFile(data: SiteData) {
 
 function normalizeSiteData(data: SiteData): SiteData {
   const assets = { ...defaultSiteData.assets, ...data.assets };
-  const backgroundImages =
-    assets.backgroundImages?.filter((item) => item.trim().length > 0) ??
-    (assets.background ? [assets.background] : []);
+  const backgroundImages = (assets.backgroundImages?.length
+    ? assets.backgroundImages
+    : assets.background
+      ? [assets.background]
+      : []
+  ).filter(isRemoteImageUrl);
 
   return {
     ...defaultSiteData,
     ...data,
     assets: {
       ...assets,
-      background: backgroundImages[0] ?? assets.background,
+      background: backgroundImages[0] ?? "",
       backgroundImages
     },
     content: { ...defaultSiteData.content, ...data.content },
@@ -631,6 +634,10 @@ function normalizeSiteData(data: SiteData): SiteData {
     products: data.products ?? [],
     articles: data.articles ?? []
   };
+}
+
+function isRemoteImageUrl(value: string) {
+  return /^https?:\/\//i.test(value.trim());
 }
 
 type DbAssetsRow = {

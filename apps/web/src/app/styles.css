@@ -26,6 +26,44 @@ body {
   line-height: 1.5;
 }
 
+.site-loading-page {
+  align-items: center;
+  background: #fffdf9;
+  display: flex;
+  min-height: 100vh;
+  justify-content: center;
+  padding: 24px;
+}
+
+.site-loading-card {
+  align-items: center;
+  color: var(--deep-green);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  text-align: center;
+}
+
+.site-loading-card strong {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.site-loading-card p {
+  color: var(--muted);
+  margin: 0;
+}
+
+.site-loading-spinner {
+  animation: spin 0.9s linear infinite;
+  border: 3px solid #dcebdd;
+  border-top-color: var(--green);
+  border-radius: 999px;
+  display: block;
+  height: 34px;
+  width: 34px;
+}
+
 a {
   color: inherit;
   text-decoration: none;
@@ -166,20 +204,26 @@ textarea {
 }
 
 .hero-backgrounds {
-  display: flex;
   height: 100%;
   left: 0;
   position: absolute;
   top: 0;
-  transition: transform 0.55s ease;
   width: 100%;
 }
 
 .hero-backgrounds img {
-  flex: 0 0 100%;
   height: 100%;
+  left: 0;
+  opacity: 0;
   object-fit: cover;
+  position: absolute;
+  top: 0;
+  transition: opacity 0.9s ease-in-out;
   width: 100%;
+}
+
+.hero-backgrounds img.active {
+  opacity: 1;
 }
 
 .hero-actions {

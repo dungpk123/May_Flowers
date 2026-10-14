@@ -2,7 +2,7 @@
 
 import type { SiteData } from "@shop-flower/data";
 import SitePage, { type SiteView } from "./SitePage";
-import { useLiveSiteData } from "./useLiveSiteData";
+import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
 
 export default function LiveSitePage({
   initialData,
@@ -11,7 +11,9 @@ export default function LiveSitePage({
   initialData: SiteData;
   view: SiteView;
 }) {
-  const data = useLiveSiteData(initialData);
+  const { data, isLoading } = useLiveSiteData(initialData);
+
+  if (isLoading) return <SiteLoadingScreen />;
 
   return <SitePage data={data} view={view} />;
 }

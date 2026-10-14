@@ -18,7 +18,7 @@ import {
   User,
   X
 } from "lucide-react";
-import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { Article, Category, Order, OrderStatus, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
 import { publicApiUrl } from "../../apiConfig";
@@ -26,6 +26,10 @@ import { publicApiUrl } from "../../apiConfig";
 const apiUrl = publicApiUrl;
 const adminPassword = process.env.NEXT_PUBLIC_ADMIN_PASSWORD ?? "admin123";
 const rememberedPasswordKey = "shop-flower-admin-password";
+
+function isRemoteImageUrl(value: string) {
+  return /^https?:\/\//i.test(value.trim());
+}
 
 type ContentKey = keyof SiteData["content"];
 
@@ -83,6 +87,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [toast, setToast] = useState<AdminToast | null>(null);
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const didLoadLiveData = useRef(false);
   const [uploadingField, setUploadingField] = useState("");
   const [activeSection, setActiveSection] = useState<"overview" | "orders" | "categories" | "products" | "blog">("overview");
   const [orders, setOrders] = useState<Order[]>([]);
@@ -90,6 +95,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [productCategoryFilter, setProductCategoryFilter] = useState("");
   const [filteredProductIds, setFilteredProductIds] = useState<number[] | null>(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isLoadingLiveData, setIsLoadingLiveData] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
   const [pendingProductUploads, setPendingProductUploads] = useState<Record<number, PendingProductUpload[]>>({});
@@ -130,6 +136,60 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   function showToast(message: string, tone: AdminToast["tone"] = "info") {
     setToast({ message, tone });
   }
+
+  async function loadLiveSiteData() {
+    setIsLoadingLiveData(true);
+
+    try {
+      const response = await fetch(`${apiUrl}/site-data`, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("Cannot load site data");
+      }
+
+      const nextData = (await response.json()) as SiteData;
+      const cleanedData = {
+        ...nextData,
+        assets: {
+          ...nextData.assets,
+          background: isRemoteImageUrl(nextData.assets.background)
+            ? nextData.assets.background
+            : "",
+          backgroundImages: (nextData.assets.backgroundImages ?? []).filter(isRemoteImageUrl)
+        }
+      };
+      setData(cleanedData);
+      setSavedData(cleanedData);
+      setPendingProductUploads({});
+      setFilteredProductIds(
+        productCategoryFilter
+          ? nextData.products
+              .filter((product) => product.category === productCategoryFilter)
+              .map((product) => product.id)
+          : null
+      );
+      showToast(
+        `Đã tải dữ liệu mới nhất từ server (${nextData.products.length} sản phẩm).`,
+        "success"
+      );
+    } catch {
+      showToast(
+        "Chưa tải được dữ liệu mới nhất từ server. Đang dùng dữ liệu trong bản build.",
+        "error"
+      );
+    } finally {
+      setIsLoadingLiveData(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!isUnlocked || didLoadLiveData.current) return;
+
+    didLoadLiveData.current = true;
+    void loadLiveSiteData();
+  }, [isUnlocked]);
 
   function rememberPendingProductUpload(
     productId: number,
@@ -323,10 +383,21 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         message: "Đang lưu dữ liệu website..."
       });
 
+      const dataToPersist: SiteData = {
+        ...dataToSave,
+        assets: {
+          ...dataToSave.assets,
+          background: isRemoteImageUrl(dataToSave.assets.background)
+            ? dataToSave.assets.background
+            : "",
+          backgroundImages: (dataToSave.assets.backgroundImages ?? []).filter(isRemoteImageUrl)
+        }
+      };
+
       const response = await fetch(`${apiUrl}/site-data`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(dataToSave)
+        body: JSON.stringify(dataToPersist)
       });
 
       if (!response.ok) {
@@ -687,11 +758,14 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <h1>Chỉnh sửa nội dung</h1>
           </div>
           <div className="admin-header-actions">
-            <button className="admin-exit-button" disabled={isSaving} type="button" onClick={exitAdmin}>
+            <button className="admin-exit-button" disabled={isSaving || isLoadingLiveData || Boolean(uploadingField)} type="button" onClick={exitAdmin}>
               <LogOut size={18} /> Thoát
             </button>
-            <button disabled={isSaving} type="button" onClick={save}>
-              <Save size={18} /> {isSaving ? "Đang lưu..." : "Lưu"}
+            <button className="admin-exit-button" disabled={isSaving || isLoadingLiveData || Boolean(uploadingField)} type="button" onClick={loadLiveSiteData}>
+              <RefreshCw className={isLoadingLiveData ? "spinning" : ""} size={18} /> Tải lại
+            </button>
+            <button disabled={isSaving || isLoadingLiveData || Boolean(uploadingField)} type="button" onClick={save}>
+              <Save size={18} /> {isSaving ? "Đang lưu..." : isLoadingLiveData ? "Đang tải..." : "Lưu"}
             </button>
           </div>
         </header>
@@ -737,7 +811,10 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                 />
               </div>
               <BackgroundManager
-                images={data.assets.backgroundImages?.length ? data.assets.backgroundImages : [data.assets.background]}
+                images={(data.assets.backgroundImages?.length
+                  ? data.assets.backgroundImages
+                  : [data.assets.background]
+                ).filter(isRemoteImageUrl)}
                 uploadingField={uploadingField}
                 onAdd={(file) =>
                   uploadImage(

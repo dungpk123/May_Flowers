@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { createElement, useEffect, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
 import { publicApiUrl } from "../apiConfig";
 
 export function useLiveSiteData(initialData: SiteData) {
   const [data, setData] = useState(initialData);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     let ignored = false;
@@ -21,6 +22,8 @@ export function useLiveSiteData(initialData: SiteData) {
         if (!ignored) setData(nextData);
       } catch {
         // Keep the static data if the live API is unavailable.
+      } finally {
+        if (!ignored) setIsLoading(false);
       }
     }
 
@@ -31,5 +34,19 @@ export function useLiveSiteData(initialData: SiteData) {
     };
   }, []);
 
-  return data;
+  return { data, isLoading };
+}
+
+export function SiteLoadingScreen() {
+  return createElement(
+    "main",
+    { className: "site-loading-page", "aria-live": "polite", "aria-busy": true },
+    createElement(
+      "div",
+      { className: "site-loading-card" },
+      createElement("span", { className: "site-loading-spinner" }),
+      createElement("strong", null, "Đang tải website"),
+      createElement("p", null, "Vui lòng chờ trong giây lát.")
+    )
+  );
 }
