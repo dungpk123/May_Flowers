@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { type Category, type Product, type SiteData } from "@shop-flower/data";
+import SiteHeadClient from "./SiteHeadClient";
 
 export type SiteView = "home" | "about" | "bouquets" | "fruit" | "blog" | "contact";
 
@@ -60,9 +61,18 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
         .includes(q)
     );
   }, [data.products, query, view]);
+  const newProducts = useMemo(
+    () => filteredProducts.filter((product) => isBadge(product, "mới")),
+    [filteredProducts]
+  );
+  const hotProducts = useMemo(
+    () => filteredProducts.filter((product) => isBadge(product, "hot")),
+    [filteredProducts]
+  );
 
   return (
     <main>
+      <SiteHeadClient data={data} />
       <Header data={data} query={query} setQuery={setQuery} />
       <MainNav categories={visibleCategories} />
 
@@ -71,6 +81,18 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
           <Hero data={data} />
           <FloatingContact data={data} />
           <CategoryGrid categories={visibleCategories} />
+          {newProducts.length > 0 ? (
+            <ProductArea
+              products={newProducts}
+              title="Sản phẩm mới"
+            />
+          ) : null}
+          {hotProducts.length > 0 ? (
+            <ProductArea
+              products={hotProducts}
+              title="Sản phẩm hot"
+            />
+          ) : null}
           <ProductArea
             products={filteredProducts}
             title="Sản phẩm"
@@ -434,6 +456,10 @@ function filterProductsByView(products: Product[], view: SiteView) {
   }
 
   return products;
+}
+
+function isBadge(product: Product, badge: string) {
+  return (product.badge ?? "").trim().toLowerCase() === badge;
 }
 
 function getProductImages(product: Product) {

@@ -26,6 +26,7 @@ export type Article = {
 };
 
 export type SiteContent = {
+  siteTitle: string;
   brandName: string;
   tagline: string;
   hotline: string;
@@ -74,6 +75,7 @@ export const defaultSiteData: SiteData = {
     phoneIcon: "/img/icon-dien-thoai.png"
   },
   content: {
+    siteTitle: "May Flowers - Hoa tươi và quà tặng",
     brandName: "Happy Flower",
     tagline: "Giao hoa toàn quốc",
     hotline: "0900 365 365",

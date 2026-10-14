@@ -126,6 +126,7 @@ async function ensureDatabase(client?: PoolConnection) {
   await db.query(`
     create table if not exists site_content (
       id int primary key,
+      site_title text null,
       brand_name text not null,
       tagline text not null,
       hotline text not null,
@@ -148,6 +149,8 @@ async function ensureDatabase(client?: PoolConnection) {
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
   `);
+
+  await addColumnIfMissing(db, "site_content", "site_title", "text null after id");
 
   await db.query(`
     create table if not exists categories (
@@ -258,15 +261,16 @@ async function upsertContent(db: Db, content: SiteContent) {
   await db.query(
     `
       insert into site_content (
-        id, brand_name, tagline, hotline, zalo_url, facebook_url, address, email,
+        id, site_title, brand_name, tagline, hotline, zalo_url, facebook_url, address, email,
         hero_title, hero_subtitle, hero_description, cta_eyebrow, cta_title,
         cta_description, footer_title, footer_description, about_title,
         about_content, contact_title, contact_content, updated_at
       )
       values (
-        1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp
+        1, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, current_timestamp
       )
       on duplicate key update
+        site_title = values(site_title),
         brand_name = values(brand_name),
         tagline = values(tagline),
         hotline = values(hotline),
@@ -289,6 +293,7 @@ async function upsertContent(db: Db, content: SiteContent) {
         updated_at = current_timestamp
     `,
     [
+      content.siteTitle,
       content.brandName,
       content.tagline,
       content.hotline,
@@ -469,6 +474,7 @@ type DbAssetsRow = {
 };
 
 type DbContentRow = {
+  site_title?: string | null;
   brand_name: string;
   tagline: string;
   hotline: string;
@@ -570,6 +576,7 @@ function contentFromRow(row?: DbContentRow): SiteContent {
   if (!row) return defaultSiteData.content;
 
   return {
+    siteTitle: row.site_title || defaultSiteData.content.siteTitle,
     brandName: row.brand_name,
     tagline: row.tagline,
     hotline: row.hotline,

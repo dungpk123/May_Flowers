@@ -14,6 +14,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
+import SiteHeadClient from "./SiteHeadClient";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -66,6 +67,7 @@ export default function ProductDetailClient({
 
   return (
     <main>
+      <SiteHeadClient data={data} />
       <header className="site-header detail-header">
         <a className="brand detail-brand" href="/">
           <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />

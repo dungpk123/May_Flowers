@@ -4,6 +4,7 @@ import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Product, SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
+import SiteHeadClient from "./SiteHeadClient";
 import { useLiveSiteData } from "./useLiveSiteData";
 
 const money = new Intl.NumberFormat("vi-VN", {
@@ -76,6 +77,7 @@ export default function CategoryPageClient({
 
   return (
     <main>
+      <SiteHeadClient data={data} />
       <header className="site-header category-header">
         <a className="brand" href="/">
           <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />

@@ -31,6 +31,7 @@ type AdminToast = {
 };
 
 const homeFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
+  { key: "siteTitle", label: "Tiêu đề trên tab trình duyệt" },
   { key: "brandName", label: "Tên thương hiệu" }
 ];
 

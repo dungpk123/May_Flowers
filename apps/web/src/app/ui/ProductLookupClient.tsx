@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
 import ProductDetailClient from "./ProductDetailClient";
+import SiteHeadClient from "./SiteHeadClient";
 import { useLiveSiteData } from "./useLiveSiteData";
 
 export default function ProductLookupClient({ data: initialData }: { data: SiteData }) {
@@ -29,6 +30,7 @@ export default function ProductLookupClient({ data: initialData }: { data: SiteD
   if (!product) {
     return (
       <main>
+        <SiteHeadClient data={data} />
         <header className="site-header detail-header">
           <a className="brand detail-brand" href="/">
             <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
