@@ -25,6 +25,31 @@ export type Article = {
   content?: string;
 };
 
+export type OrderStatus = "pending" | "confirmed" | "delivering" | "completed" | "cancelled";
+
+export type Order = {
+  id: string;
+  orderCode: string;
+  productId: number;
+  productName: string;
+  productImage: string;
+  productPrice: number;
+  quantity: number;
+  totalAmount: number;
+  ordererName: string;
+  ordererPhone: string;
+  ordererEmail?: string;
+  isSameRecipient: boolean;
+  recipientName: string;
+  recipientPhone: string;
+  deliveryDate: string;
+  deliveryTime: string;
+  deliveryAddress: string;
+  message?: string;
+  status: OrderStatus;
+  createdAt: string;
+};
+
 export type SiteContent = {
   siteTitle: string;
   brandName: string;

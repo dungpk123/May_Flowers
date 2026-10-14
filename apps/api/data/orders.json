@@ -1,0 +1,24 @@
+[
+  {
+    "id": "order_1791960673299_wgdle",
+    "orderCode": "MF-673299",
+    "productId": 1791885178135,
+    "productName": "Hoa Khai Trương - KT1",
+    "productImage": "https://res.cloudinary.com/dbpsdxha/image/upload/v1791928903/shop-flower/uploads/t4bqichephh2jzddjxny.jpg",
+    "productPrice": 1200000,
+    "quantity": 2,
+    "totalAmount": 2400000,
+    "ordererName": "Nguyễn Tiến Dũng",
+    "ordererPhone": "0832591267",
+    "ordererEmail": "tiendung@gmail.com",
+    "isSameRecipient": true,
+    "recipientName": "Nguyễn Tiến Dũng",
+    "recipientPhone": "0832591267",
+    "deliveryDate": "2026-10-14",
+    "deliveryTime": "Giao càng sớm càng tốt (60 - 120 phút)",
+    "deliveryAddress": "123 Đường Cầu Giấy, Hà Nội",
+    "message": "Chúc mừng khai trương đại hồng phát, vạn sự hanh thông!",
+    "status": "pending",
+    "createdAt": "2026-10-14T06:51:13.299Z"
+  }
+]

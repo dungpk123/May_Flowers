@@ -5,6 +5,7 @@ import {
   Controller,
   Get,
   Module,
+  Param,
   Post,
   Put,
   Query,
@@ -16,7 +17,14 @@ import { FileInterceptor } from "@nestjs/platform-express";
 import type { SiteData } from "@shop-flower/data";
 import multer from "multer";
 import { deleteImageByUrl, isCloudinaryConfigured, uploadImageBuffer } from "./cloudinary";
-import { readSiteData, saveSiteData, storageMode } from "./storage";
+import {
+  createOrder,
+  readOrders,
+  readSiteData,
+  saveSiteData,
+  storageMode,
+  updateOrderStatus
+} from "./storage";
 
 @Controller()
 class AppController {
@@ -46,21 +54,49 @@ class AppController {
   }
 
   @Get("products")
-  async getProducts(@Query("q") query = "") {
+  async getProducts(@Query("q") query = "", @Query("category") category = "") {
     const products = (await readSiteData()).products;
     const q = query.trim().toLowerCase();
-    if (!q) return products;
+    const categoryName = category.trim().toLowerCase();
 
-    return products.filter((product) =>
-      [product.name, product.category, product.description ?? ""].some((value) =>
-        value.toLowerCase().includes(q)
-      )
-    );
+    return products.filter((product) => {
+      const matchesCategory =
+        !categoryName || product.category.trim().toLowerCase() === categoryName;
+      const matchesQuery =
+        !q ||
+        [product.name, product.category, product.description ?? ""].some((value) =>
+          value.toLowerCase().includes(q)
+        );
+
+      return matchesCategory && matchesQuery;
+    });
   }
 
   @Get("articles")
   async getArticles() {
     return (await readSiteData()).articles;
+  }
+
+  @Get("orders")
+  async getOrders() {
+    return readOrders();
+  }
+
+  @Post("orders")
+  async createOrderEndpoint(@Body() body: any) {
+    if (!body.productName || !body.ordererName || !body.ordererPhone) {
+      throw new BadRequestException("Vui lòng điền đầy đủ thông tin bắt buộc.");
+    }
+    return createOrder(body);
+  }
+
+  @Put("orders/:id/status")
+  async updateStatusEndpoint(@Param("id") id: string, @Body("status") status: any) {
+    const updated = await updateOrderStatus(id, status);
+    if (!updated) {
+      throw new BadRequestException("Không tìm thấy đơn hàng.");
+    }
+    return updated;
   }
 
   @Post("uploads/image")

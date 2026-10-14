@@ -10,6 +10,8 @@ import {
   defaultSiteData,
   type Article,
   type Category,
+  type Order,
+  type OrderStatus,
   type Product,
   type SiteAssets,
   type SiteContent,
@@ -20,6 +22,7 @@ config({ path: join(process.cwd(), ".env") });
 config({ path: join(process.cwd(), "..", "..", ".env") });
 
 const dataFile = join(__dirname, "..", "data", "site-data.json");
+const ordersFile = join(__dirname, "..", "data", "orders.json");
 const databaseUrl = process.env.DATABASE_URL;
 const databaseName = normalizeDatabaseName(process.env.DATABASE_NAME || "shop_flower");
 
@@ -95,6 +98,146 @@ export async function saveSiteData(data: SiteData): Promise<SiteData> {
   } finally {
     client.release();
   }
+}
+
+export async function createOrder(
+  input: Omit<Order, "id" | "orderCode" | "status" | "createdAt"> & {
+    id?: string;
+    orderCode?: string;
+    status?: OrderStatus;
+    createdAt?: string;
+  }
+): Promise<Order> {
+  const now = new Date();
+  const id = input.id || `order_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+  const orderCode = input.orderCode || `MF-${Date.now().toString().slice(-6)}`;
+  const status: OrderStatus = input.status || "pending";
+  const createdAt = input.createdAt || now.toISOString();
+
+  const newOrder: Order = {
+    id,
+    orderCode,
+    productId: Number(input.productId),
+    productName: input.productName,
+    productImage: input.productImage,
+    productPrice: Number(input.productPrice),
+    quantity: Number(input.quantity),
+    totalAmount: Number(input.totalAmount || Number(input.productPrice) * Number(input.quantity)),
+    ordererName: input.ordererName,
+    ordererPhone: input.ordererPhone,
+    ordererEmail: input.ordererEmail,
+    isSameRecipient: Boolean(input.isSameRecipient),
+    recipientName: input.recipientName,
+    recipientPhone: input.recipientPhone,
+    deliveryDate: input.deliveryDate,
+    deliveryTime: input.deliveryTime,
+    deliveryAddress: input.deliveryAddress,
+    message: input.message,
+    status,
+    createdAt
+  };
+
+  try {
+    const existingOrders = readOrdersJson();
+    saveOrdersJson([newOrder, ...existingOrders.filter((o) => o.id !== newOrder.id)]);
+  } catch (err) {
+    console.warn("Failed to save order to JSON file:", err);
+  }
+
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      await pool.query(
+        `insert into orders (
+          id, order_code, product_id, product_name, product_image, product_price,
+          quantity, total_amount, orderer_name, orderer_phone, orderer_email,
+          is_same_recipient, recipient_name, recipient_phone, delivery_date,
+          delivery_time, delivery_address, message, status, created_at
+        ) values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          newOrder.id,
+          newOrder.orderCode,
+          newOrder.productId,
+          newOrder.productName,
+          newOrder.productImage,
+          newOrder.productPrice,
+          newOrder.quantity,
+          newOrder.totalAmount,
+          newOrder.ordererName,
+          newOrder.ordererPhone,
+          newOrder.ordererEmail || null,
+          newOrder.isSameRecipient ? 1 : 0,
+          newOrder.recipientName,
+          newOrder.recipientPhone,
+          newOrder.deliveryDate,
+          newOrder.deliveryTime,
+          newOrder.deliveryAddress,
+          newOrder.message || null,
+          newOrder.status,
+          now
+        ]
+      );
+    } catch (err) {
+      console.warn("Failed to save order to database, fallback to JSON:", err);
+    }
+  }
+
+  return newOrder;
+}
+
+export async function readOrders(): Promise<Order[]> {
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      const rows = await queryRows<DbOrderRow>(
+        pool,
+        "select * from orders order by created_at desc"
+      );
+      if (rows.length > 0) {
+        return rows.map(orderFromRow);
+      }
+    } catch (err) {
+      console.warn("Failed to fetch orders from database, fallback to JSON:", err);
+    }
+  }
+
+  return readOrdersJson();
+}
+
+export async function updateOrderStatus(
+  id: string,
+  status: OrderStatus
+): Promise<Order | null> {
+  let updatedOrder: Order | null = null;
+
+  if (pool && databaseAvailable) {
+    try {
+      await ensureDatabase();
+      await pool.query("update orders set status = ? where id = ?", [status, id]);
+      const rows = await queryRows<DbOrderRow>(
+        pool,
+        "select * from orders where id = ?",
+        [id]
+      );
+      if (rows.length > 0) {
+        updatedOrder = orderFromRow(rows[0]);
+      }
+    } catch (err) {
+      console.warn("Failed to update order in database, fallback to JSON:", err);
+    }
+  }
+
+  const existingOrders = readOrdersJson();
+  const index = existingOrders.findIndex((o) => o.id === id);
+  if (index >= 0) {
+    existingOrders[index] = { ...existingOrders[index], status };
+    saveOrdersJson(existingOrders);
+    if (!updatedOrder) {
+      updatedOrder = existingOrders[index];
+    }
+  }
+
+  return updatedOrder;
 }
 
 async function ensureDatabase(client?: PoolConnection) {
@@ -191,6 +334,32 @@ async function ensureDatabase(client?: PoolConnection) {
       image text not null,
       excerpt text not null,
       content text null,
+      created_at timestamp not null default current_timestamp,
+      updated_at timestamp not null default current_timestamp on update current_timestamp
+    )
+  `);
+
+  await db.query(`
+    create table if not exists orders (
+      id varchar(64) primary key,
+      order_code varchar(32) not null,
+      product_id bigint not null,
+      product_name text not null,
+      product_image text not null,
+      product_price int not null,
+      quantity int not null,
+      total_amount int not null,
+      orderer_name text not null,
+      orderer_phone text not null,
+      orderer_email text null,
+      is_same_recipient boolean not null default 0,
+      recipient_name text not null,
+      recipient_phone text not null,
+      delivery_date text not null,
+      delivery_time text not null,
+      delivery_address text not null,
+      message text null,
+      status varchar(32) not null default 'pending',
       created_at timestamp not null default current_timestamp,
       updated_at timestamp not null default current_timestamp on update current_timestamp
     )
@@ -661,4 +830,68 @@ function articleFromRow(row: DbArticleRow): Article {
     excerpt: row.excerpt,
     content: row.content ?? undefined
   };
+}
+
+type DbOrderRow = {
+  id: string;
+  order_code: string;
+  product_id: string | number;
+  product_name: string;
+  product_image: string;
+  product_price: number;
+  quantity: number;
+  total_amount: number;
+  orderer_name: string;
+  orderer_phone: string;
+  orderer_email: string | null;
+  is_same_recipient: number | boolean;
+  recipient_name: string;
+  recipient_phone: string;
+  delivery_date: string;
+  delivery_time: string;
+  delivery_address: string;
+  message: string | null;
+  status: OrderStatus;
+  created_at: string | Date;
+};
+
+function orderFromRow(row: DbOrderRow): Order {
+  return {
+    id: String(row.id),
+    orderCode: row.order_code,
+    productId: Number(row.product_id),
+    productName: row.product_name,
+    productImage: row.product_image,
+    productPrice: Number(row.product_price),
+    quantity: Number(row.quantity),
+    totalAmount: Number(row.total_amount),
+    ordererName: row.orderer_name,
+    ordererPhone: row.orderer_phone,
+    ordererEmail: row.orderer_email ?? undefined,
+    isSameRecipient: Boolean(row.is_same_recipient),
+    recipientName: row.recipient_name,
+    recipientPhone: row.recipient_phone,
+    deliveryDate: row.delivery_date,
+    deliveryTime: row.delivery_time,
+    deliveryAddress: row.delivery_address,
+    message: row.message ?? undefined,
+    status: row.status,
+    createdAt: row.created_at instanceof Date ? row.created_at.toISOString() : String(row.created_at)
+  };
+}
+
+function readOrdersJson(): Order[] {
+  if (!existsSync(ordersFile)) {
+    return [];
+  }
+  try {
+    return JSON.parse(readFileSync(ordersFile, "utf8")) as Order[];
+  } catch {
+    return [];
+  }
+}
+
+function saveOrdersJson(orders: Order[]) {
+  mkdirSync(dirname(ordersFile), { recursive: true });
+  writeFileSync(ordersFile, JSON.stringify(orders, null, 2), "utf8");
 }

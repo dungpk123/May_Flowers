@@ -9,12 +9,14 @@ import {
   ImageIcon,
   RefreshCcw,
   Search,
+  ShoppingBag,
   Truck
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
 import { Footer } from "./SitePage";
 import SiteHeadClient from "./SiteHeadClient";
+import OrderModal from "./OrderModal";
 
 const money = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -52,10 +54,15 @@ export default function ProductDetailClient({
   );
   const productImages = useMemo(() => getProductImages(product), [product]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
   const activeImage = productImages[activeImageIndex] ?? productImages[0] ?? product.image;
 
   useEffect(() => {
     setActiveImageIndex(0);
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("order") === "1" || params.get("dathang") === "1") {
+      setIsOrderModalOpen(true);
+    }
   }, [product.id]);
 
   function moveImage(direction: -1 | 1) {
@@ -134,6 +141,20 @@ export default function ProductDetailClient({
             </ul>
           </div>
 
+          {product.price ? (
+            <button
+              className="order-now-btn"
+              onClick={() => setIsOrderModalOpen(true)}
+              type="button"
+            >
+              <ShoppingBag size={22} />
+              <div className="order-now-btn-text">
+                <span className="order-now-btn-title">ĐẶT HÀNG NGAY</span>
+                <span className="order-now-btn-desc">Giao nhanh 60 - 120 phút • Xác nhận mẫu trước khi giao</span>
+              </div>
+            </button>
+          ) : null}
+
           <div className="product-contact-actions">
             {data.content.zaloUrl ? (
               <a
@@ -182,6 +203,14 @@ export default function ProductDetailClient({
             ))}
           </div>
         </section>
+      ) : null}
+      {product.price ? (
+        <OrderModal
+          data={data}
+          isOpen={isOrderModalOpen}
+          onClose={() => setIsOrderModalOpen(false)}
+          product={product}
+        />
       ) : null}
       <Footer data={data} />
     </main>

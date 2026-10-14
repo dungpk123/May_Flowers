@@ -1,8 +1,25 @@
 "use client";
 
-import { AlertCircle, CheckCircle2, ImageUp, Info, LogOut, Plus, Save, Trash2, X } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
-import type { Article, Category, Product, SiteData } from "@shop-flower/data";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Clock,
+  ImageUp,
+  Info,
+  LogOut,
+  MapPin,
+  Phone,
+  Plus,
+  RefreshCw,
+  Save,
+  Send,
+  ShoppingBag,
+  Trash2,
+  User,
+  X
+} from "lucide-react";
+import { type ChangeEvent, useEffect, useMemo, useState } from "react";
+import type { Article, Category, Order, OrderStatus, Product, SiteData } from "@shop-flower/data";
 import SitePage from "../../ui/SitePage";
 import { publicApiUrl } from "../../apiConfig";
 
@@ -55,13 +72,28 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [password, setPassword] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [uploadingField, setUploadingField] = useState("");
-  const [activeSection, setActiveSection] = useState<"overview" | "categories" | "products" | "blog">("overview");
+  const [activeSection, setActiveSection] = useState<"overview" | "orders" | "categories" | "products" | "blog">("overview");
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [isLoadingOrders, setIsLoadingOrders] = useState(false);
+  const [productCategoryFilter, setProductCategoryFilter] = useState("");
+  const [filteredProductIds, setFilteredProductIds] = useState<number[] | null>(null);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [modal, setModal] = useState<AdminModal | null>(null);
   const [imageModalProductId, setImageModalProductId] = useState<number | null>(null);
   const hasUnsavedChanges = useMemo(
     () => JSON.stringify(data) !== JSON.stringify(savedData),
     [data, savedData]
   );
+  const categoryOptions = useMemo(
+    () => sortAdminCategories(data.categories).map((category) => category.name).filter(Boolean),
+    [data.categories]
+  );
+  const visibleAdminProducts = useMemo(() => {
+    if (!productCategoryFilter || !filteredProductIds) return data.products;
+
+    const ids = new Set(filteredProductIds);
+    return data.products.filter((product) => ids.has(product.id));
+  }, [data.products, filteredProductIds, productCategoryFilter]);
 
   useEffect(() => {
     const rememberedPassword = window.localStorage.getItem(rememberedPasswordKey);
@@ -87,6 +119,110 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
       ...data,
       content: { ...data.content, [key]: value }
     });
+  }
+
+  async function fetchOrders() {
+    setIsLoadingOrders(true);
+    let list: Order[] = [];
+    try {
+      const response = await fetch(`${apiUrl}/orders`);
+      if (response.ok) {
+        list = await response.json();
+      }
+    } catch {
+      // offline
+    }
+
+    try {
+      const local = window.localStorage.getItem("shop-flower-orders");
+      if (local) {
+        const localList: Order[] = JSON.parse(local);
+        const map = new Map<string, Order>();
+        list.forEach((o) => map.set(o.id, o));
+        localList.forEach((o) => {
+          if (!map.has(o.id)) map.set(o.id, o);
+        });
+        list = Array.from(map.values()).sort(
+          (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+        );
+      }
+    } catch {
+      // ignore
+    }
+
+    setOrders(list);
+    setIsLoadingOrders(false);
+  }
+
+  async function fetchProductsByCategory(category: string) {
+    if (!category) {
+      setFilteredProductIds(null);
+      return;
+    }
+
+    setIsLoadingProducts(true);
+    try {
+      const params = new URLSearchParams({ category });
+      const response = await fetch(`${apiUrl}/products?${params.toString()}`, {
+        cache: "no-store"
+      });
+
+      if (!response.ok) {
+        throw new Error("Cannot load products");
+      }
+
+      const products = (await response.json()) as Product[];
+      setFilteredProductIds(products.map((product) => product.id));
+    } catch {
+      const fallbackIds = data.products
+        .filter((product) => product.category === category)
+        .map((product) => product.id);
+      setFilteredProductIds(fallbackIds);
+      showToast("Không gọi được BE để lọc sản phẩm, đang dùng dữ liệu tạm trên máy.", "error");
+    } finally {
+      setIsLoadingProducts(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeSection === "orders") {
+      fetchOrders();
+    }
+  }, [activeSection]);
+
+  useEffect(() => {
+    if (activeSection !== "products") return;
+
+    void fetchProductsByCategory(productCategoryFilter);
+  }, [activeSection, productCategoryFilter]);
+
+  async function updateOrderStatusHandler(orderId: string, status: OrderStatus) {
+    try {
+      await fetch(`${apiUrl}/orders/${orderId}/status`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status })
+      });
+    } catch {
+      // ignore
+    }
+
+    setOrders((prev) =>
+      prev.map((o) => (o.id === orderId ? { ...o, status } : o))
+    );
+
+    try {
+      const local = window.localStorage.getItem("shop-flower-orders");
+      if (local) {
+        const localList: Order[] = JSON.parse(local);
+        const nextLocal = localList.map((o) => (o.id === orderId ? { ...o, status } : o));
+        window.localStorage.setItem("shop-flower-orders", JSON.stringify(nextLocal));
+      }
+    } catch {
+      // ignore
+    }
+
+    showToast("Đã cập nhật trạng thái đơn hàng.", "success");
   }
 
   function unlock(event: React.FormEvent<HTMLFormElement>) {
@@ -234,13 +370,16 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   function addProduct() {
+    const newProductId = Date.now();
+    const selectedCategory = productCategoryFilter || data.categories[0]?.name || "";
+
     setData({
       ...data,
       products: [
         {
-          id: Date.now(),
+          id: newProductId,
           name: "",
-          category: data.categories[0]?.name ?? "",
+          category: selectedCategory,
           image: "",
           images: [],
           price: undefined
@@ -248,7 +387,17 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         ...data.products
       ]
     });
-    showToast("Đã thêm dòng sản phẩm mới ở đầu danh sách.", "success");
+
+    if (productCategoryFilter) {
+      setFilteredProductIds((currentIds) => [newProductId, ...(currentIds ?? [])]);
+    }
+
+    showToast(
+      selectedCategory
+        ? `Đã thêm sản phẩm mới vào danh mục "${selectedCategory}".`
+        : "Đã thêm dòng sản phẩm mới ở đầu danh sách.",
+      "success"
+    );
   }
 
   function removeProduct(product: Product) {
@@ -354,6 +503,9 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         <nav className="admin-tabs" aria-label="Mục quản trị">
           <button className={activeSection === "overview" ? "active" : ""} onClick={() => setActiveSection("overview")} type="button">
             Tổng quan
+          </button>
+          <button className={activeSection === "orders" ? "active" : ""} onClick={() => setActiveSection("orders")} type="button">
+            Đơn hàng {orders.length > 0 ? `(${orders.length})` : ""}
           </button>
           <button className={activeSection === "categories" ? "active" : ""} onClick={() => setActiveSection("categories")} type="button">
             Danh mục
@@ -520,6 +672,122 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
           </>
         ) : null}
 
+        {activeSection === "orders" ? (
+          <section className="admin-panel">
+            <div className="admin-panel-title">
+              <div className="admin-panel-heading">
+                <h2>Đơn hàng ({orders.length})</h2>
+                <p>Khách hàng đặt hàng nhanh qua form &ldquo;Đặt hàng ngay&rdquo; trên website.</p>
+              </div>
+              <button
+                disabled={isLoadingOrders}
+                onClick={fetchOrders}
+                type="button"
+              >
+                <RefreshCw className={isLoadingOrders ? "spinning" : ""} size={16} /> Làm mới
+              </button>
+            </div>
+
+            {orders.length === 0 ? (
+              <p className="admin-empty">Chưa có đơn hàng nào.</p>
+            ) : null}
+
+            <div className="admin-order-list">
+              {orders.map((order) => {
+                const orderDigits = order.ordererPhone.replace(/\D/g, "");
+                const recipientDigits = order.recipientPhone.replace(/\D/g, "");
+                return (
+                  <div className="admin-order-card" key={order.id}>
+                    <div className="admin-order-card-header">
+                      <div>
+                        <span className="admin-order-code">#{order.orderCode}</span>
+                        <span className="admin-order-time">
+                          {new Date(order.createdAt).toLocaleString("vi-VN")}
+                        </span>
+                      </div>
+                      <div className="admin-order-status-badge">
+                        <select
+                          className={`status-select status-${order.status}`}
+                          value={order.status}
+                          onChange={(e) => updateOrderStatusHandler(order.id, e.target.value as OrderStatus)}
+                        >
+                          <option value="pending">Chờ xác nhận</option>
+                          <option value="confirmed">Đã xác nhận</option>
+                          <option value="delivering">Đang giao hoa</option>
+                          <option value="completed">Đã hoàn thành</option>
+                          <option value="cancelled">Đã hủy</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="admin-order-card-body">
+                      <div className="admin-order-product-col">
+                        <img
+                          alt={order.productName}
+                          className="admin-order-thumb"
+                          src={order.productImage}
+                        />
+                        <div>
+                          <strong>{order.productName}</strong>
+                          <p>
+                            Số lượng: <strong>{order.quantity}</strong> • Đơn giá:{" "}
+                            {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.productPrice)}
+                          </p>
+                          <p className="admin-order-total">
+                            Tổng tiền:{" "}
+                            <strong>
+                              {new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(order.totalAmount)}
+                            </strong>
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="admin-order-info-col">
+                        <p>
+                          <User size={14} /> <strong>Người đặt:</strong> {order.ordererName} -{" "}
+                          <a href={`tel:${orderDigits}`}>{order.ordererPhone}</a>
+                          {orderDigits ? (
+                            <a
+                              className="admin-action-zalo-inline"
+                              href={`https://zalo.me/${orderDigits}`}
+                              rel="noreferrer"
+                              target="_blank"
+                            >
+                              Nhắn Zalo
+                            </a>
+                          ) : null}
+                        </p>
+                        {order.ordererEmail ? (
+                          <p>
+                            <strong>Email:</strong> {order.ordererEmail}
+                          </p>
+                        ) : null}
+                        <p>
+                          <User size={14} /> <strong>Người nhận:</strong> {order.recipientName} -{" "}
+                          <a href={`tel:${recipientDigits}`}>{order.recipientPhone}</a>
+                        </p>
+                        <p>
+                          <Clock size={14} /> <strong>Thời gian giao:</strong>{" "}
+                          {order.deliveryTime} • {order.deliveryDate}
+                        </p>
+                        <p>
+                          <MapPin size={14} /> <strong>Địa chỉ giao:</strong>{" "}
+                          {order.deliveryAddress}
+                        </p>
+                        {order.message ? (
+                          <p className="admin-order-message">
+                            <strong>Lời chúc / Thiệp:</strong> &ldquo;{order.message}&rdquo;
+                          </p>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        ) : null}
+
         {activeSection === "categories" ? (
         <section className="admin-panel">
           <div className="admin-panel-title">
@@ -598,11 +866,41 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
               <Plus size={17} /> Thêm
             </button>
           </div>
+          <div className="admin-product-filter">
+            <label>
+              <span>Lọc theo danh mục</span>
+              <select
+                disabled={isLoadingProducts}
+                value={productCategoryFilter}
+                onChange={(event) => setProductCategoryFilter(event.target.value)}
+              >
+                <option value="">Tất cả danh mục</option>
+                {categoryOptions.map((category) => (
+                  <option key={category} value={category}>
+                    {category}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <strong>
+              {isLoadingProducts
+                ? "Đang lọc từ BE..."
+                : `${visibleAdminProducts.length}/${data.products.length} sản phẩm`}
+            </strong>
+          </div>
           {data.products.length === 0 ? <p className="admin-empty">Chưa có sản phẩm.</p> : null}
+          {data.products.length > 0 && visibleAdminProducts.length === 0 ? (
+            <p className="admin-empty">Danh mục này chưa có sản phẩm.</p>
+          ) : null}
           <div className="admin-list">
-            {data.products.map((item, index) => (
+            {visibleAdminProducts.map((item) => {
+              const originalIndex = data.products.findIndex((product) => product.id === item.id);
+
+              return (
               <article className="admin-product-editor" key={item.id}>
-                <div className="admin-product-number">{index + 1}</div>
+                <div className="admin-product-number">
+                  {originalIndex >= 0 ? data.products.length - originalIndex : ""}
+                </div>
                 <ProductImageManager
                   product={item}
                   uploadingField={uploadingField}
@@ -677,7 +975,8 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                   <Trash2 size={17} />
                 </button>
               </article>
-            ))}
+              );
+            })}
           </div>
         </section>
         ) : null}
@@ -1130,6 +1429,11 @@ function ProductImagesDialog({
 }) {
   const images = product ? getProductImages(product) : [];
   const isUploading = uploadingField.includes("product-");
+  const handleAddFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    if (files.length > 0) void onAdd(files);
+    event.target.value = "";
+  };
 
   if (!product) return null;
 
@@ -1179,11 +1483,32 @@ function ProductImagesDialog({
                 </div>
               </div>
             ))}
+            <label className="admin-product-add-tile">
+              <input
+                accept="image/*"
+                disabled={isUploading}
+                multiple
+                onChange={handleAddFiles}
+                type="file"
+              />
+              <Plus size={22} />
+              <strong>{isUploading ? "Đang thêm ảnh..." : "Thêm ảnh"}</strong>
+              <span>Click để chọn nhiều ảnh</span>
+            </label>
           </div>
         ) : (
-          <div className="admin-image-preview admin-product-empty-image">
+          <label className="admin-image-preview admin-product-empty-image admin-image-dropzone">
+            <input
+              accept="image/*"
+              disabled={isUploading}
+              multiple
+              onChange={handleAddFiles}
+              type="file"
+            />
+            <ImageUp size={28} />
             <p>Chưa có ảnh</p>
-          </div>
+            <strong>{isUploading ? "Đang thêm ảnh..." : "Click để chọn nhiều ảnh"}</strong>
+          </label>
         )}
 
         <label className="admin-upload-button add-product-image">
@@ -1191,11 +1516,7 @@ function ProductImagesDialog({
             accept="image/*"
             disabled={isUploading}
             multiple
-            onChange={(event) => {
-              const files = Array.from(event.target.files ?? []);
-              if (files.length > 0) void onAdd(files);
-              event.target.value = "";
-            }}
+            onChange={handleAddFiles}
             type="file"
           />
           <Plus size={16} />

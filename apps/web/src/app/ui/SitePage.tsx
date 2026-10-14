@@ -61,13 +61,14 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
         .includes(q)
     );
   }, [data.products, query, view]);
+  const displayProducts = useMemo(() => [...filteredProducts].reverse(), [filteredProducts]);
   const newProducts = useMemo(
-    () => filteredProducts.filter((product) => isBadge(product, "mới")),
-    [filteredProducts]
+    () => displayProducts.filter((product) => isBadge(product, "mới")),
+    [displayProducts]
   );
   const hotProducts = useMemo(
-    () => filteredProducts.filter((product) => isBadge(product, "hot")),
-    [filteredProducts]
+    () => displayProducts.filter((product) => isBadge(product, "hot")),
+    [displayProducts]
   );
 
   return (
@@ -81,6 +82,7 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
           <Hero data={data} />
           <FloatingContact data={data} />
           <CategoryGrid categories={visibleCategories} />
+          <div id="products" />
           {newProducts.length > 0 ? (
             <ProductArea
               products={newProducts}
@@ -93,10 +95,7 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
               title="Sản phẩm hot"
             />
           ) : null}
-          <ProductArea
-            products={filteredProducts}
-            title="Sản phẩm"
-          />
+          <ProductCategoryAreas categories={visibleCategories} products={displayProducts} />
           <Cta data={data} />
           <ArticleGrid data={data} compact />
         </>
@@ -116,7 +115,7 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
             data={data}
           />
           <ProductArea
-            products={filteredProducts}
+            products={displayProducts}
             title={view === "bouquets" ? "Bó hoa" : "Giỏ trái cây"}
           />
         </>
@@ -275,38 +274,71 @@ function CategoryGrid({ categories }: { categories: Category[] }) {
   );
 }
 
+function ProductCategoryAreas({
+  categories,
+  products
+}: {
+  categories: Category[];
+  products: Product[];
+}) {
+  const categoryNames = new Set(categories.map((category) => category.name));
+  const groups = categories
+    .map((category) => ({
+      category,
+      products: products.filter((product) => product.category === category.name)
+    }))
+    .filter((group) => group.products.length > 0);
+  const otherProducts = products.filter((product) => !categoryNames.has(product.category));
+
+  return (
+    <>
+      {groups.map(({ category, products: categoryProducts }) => (
+        <ProductArea
+          key={category.id}
+          moreHref={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
+          products={categoryProducts}
+          title={category.name}
+        />
+      ))}
+      {otherProducts.length > 0 ? (
+        <ProductArea products={otherProducts} title="Sản phẩm khác" />
+      ) : null}
+    </>
+  );
+}
+
 function ProductArea({
+  moreHref,
   products,
   title
 }: {
+  moreHref?: string;
   products: Product[];
   title: string;
 }) {
   return (
-    <div id="products">
-      <section className="product-section">
-        <SectionTitle title={title} />
-        {products.length === 0 ? (
-          <EmptyState text="Chưa có sản phẩm phù hợp." />
-        ) : (
-          <div className="product-grid">
-            {products.map((product) => (
-              <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
-                <div className="product-image">
-                  {product.badge ? <span>{product.badge}</span> : null}
-                  <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
-                </div>
-                <div className="product-info">
-                  <h3>{product.name}</h3>
-                  {product.price ? <strong>{money.format(product.price)}</strong> : null}
-                  <em>Xem chi tiết</em>
-                </div>
-              </a>
-            ))}
-          </div>
-        )}
-      </section>
-    </div>
+    <section className="product-section">
+      <SectionTitle moreHref={moreHref} title={title} />
+      {products.length === 0 ? (
+        <EmptyState text="Chưa có sản phẩm phù hợp." />
+      ) : (
+        <div className="product-grid">
+          {products.map((product) => (
+            <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
+              <div className="product-image">
+                {product.badge ? <span>{product.badge}</span> : null}
+                <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
+              </div>
+              <div className="product-info">
+                <h3>{product.name}</h3>
+                {product.price ? <strong>{money.format(product.price)}</strong> : null}
+                <em>Xem chi tiết</em>
+              </div>
+            </a>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -370,13 +402,19 @@ function ContentPage({
   );
 }
 
-function SectionTitle({ title }: { title: string }) {
+function SectionTitle({ moreHref, title }: { moreHref?: string; title: string }) {
   return (
     <div className="section-title">
       <span>
         <CheckCircle2 size={16} /> {title}
       </span>
-      <span className="section-title-spacer" />
+      {moreHref ? (
+        <a href={moreHref}>
+          Xem thêm <ChevronRight size={16} />
+        </a>
+      ) : (
+        <span className="section-title-spacer" />
+      )}
     </div>
   );
 }
