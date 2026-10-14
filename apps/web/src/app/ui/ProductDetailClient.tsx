@@ -8,13 +8,12 @@ import {
   FileText,
   ImageIcon,
   RefreshCcw,
-  Search,
   ShoppingBag,
   Truck
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
-import { FloatingContact, Footer } from "./SitePage";
+import { FloatingContact, Footer, Header } from "./SitePage";
 import SiteHeadClient from "./SiteHeadClient";
 import OrderModal from "./OrderModal";
 
@@ -55,6 +54,7 @@ export default function ProductDetailClient({
   const productImages = useMemo(() => getProductImages(product), [product]);
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
+  const [query, setQuery] = useState("");
   const activeImage = productImages[activeImageIndex] ?? productImages[0] ?? product.image;
 
   useEffect(() => {
@@ -75,15 +75,7 @@ export default function ProductDetailClient({
   return (
     <main>
       <SiteHeadClient data={data} />
-      <header className="site-header detail-header">
-        <a className="brand detail-brand" href="/">
-          <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
-        </a>
-        <label className="search-box">
-          <Search size={19} />
-          <input placeholder="Tìm kiếm sản phẩm" />
-        </label>
-      </header>
+      <Header data={data} query={query} setQuery={setQuery} />
 
       <section className="product-detail">
         <div className="product-gallery">

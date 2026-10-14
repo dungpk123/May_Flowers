@@ -1,9 +1,8 @@
 "use client";
 
-import { Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Category, Product, SiteData } from "@shop-flower/data";
-import { Footer } from "./SitePage";
+import { Footer, Header } from "./SitePage";
 import SiteHeadClient from "./SiteHeadClient";
 import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
 
@@ -80,19 +79,7 @@ export default function CategoryPageClient({
   return (
     <main>
       <SiteHeadClient data={data} />
-      <header className="site-header category-header">
-        <a className="brand" href="/">
-          <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
-        </a>
-        <label className="search-box">
-          <Search size={19} />
-          <input
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-            placeholder="Tìm kiếm sản phẩm"
-          />
-        </label>
-      </header>
+      <Header data={data} query={query} setQuery={setQuery} />
 
       <section className="catalog-layout">
         <aside className="catalog-sidebar">

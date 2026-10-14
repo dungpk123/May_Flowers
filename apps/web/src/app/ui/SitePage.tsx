@@ -7,7 +7,7 @@ import {
   ChevronRight,
   Search
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { type Category, type Product, type SiteData } from "@shop-flower/data";
 import SiteHeadClient from "./SiteHeadClient";
 
@@ -151,7 +151,7 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
   );
 }
 
-function Header({
+export function Header({
   data,
   query,
   setQuery
@@ -161,6 +161,7 @@ function Header({
   setQuery: (value: string) => void;
 }) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const searchRef = useRef<HTMLDivElement>(null);
   const searchTerm = query.trim().toLowerCase();
   const searchResults = searchTerm
     ? data.products
@@ -169,8 +170,20 @@ function Header({
             .toLowerCase()
             .includes(searchTerm)
         )
-        .slice(0, 8)
     : [];
+
+  useEffect(() => {
+    if (!isSearchOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!searchRef.current?.contains(event.target as Node)) {
+        setIsSearchOpen(false);
+      }
+    };
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, [isSearchOpen]);
 
   return (
     <header className="site-header">
@@ -178,7 +191,7 @@ function Header({
         <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
       </a>
 
-      <div className={`search-shell ${isSearchOpen ? "is-open" : ""}`}>
+      <div className={`search-shell ${isSearchOpen ? "is-open" : ""}`} ref={searchRef}>
         <button
           aria-label="Mở tìm kiếm"
           className="search-toggle"

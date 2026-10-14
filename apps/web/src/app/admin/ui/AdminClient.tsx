@@ -760,7 +760,6 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <h1>Chỉnh sửa nội dung</h1>
           </div>
           <div className="admin-header-actions">
-            <AdminPushControls />
             <button className="admin-exit-button" disabled={isSaving || isLoadingLiveData || Boolean(uploadingField)} type="button" onClick={exitAdmin}>
               <LogOut size={18} /> Thoát
             </button>
@@ -772,6 +771,10 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             </button>
           </div>
         </header>
+
+        <div className="admin-push-toolbar">
+          <AdminPushControls />
+        </div>
 
         <nav className="admin-tabs" aria-label="Mục quản trị">
           <button className={activeSection === "overview" ? "active" : ""} onClick={() => setActiveSection("overview")} type="button">

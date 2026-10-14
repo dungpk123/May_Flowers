@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import type { SiteData } from "@shop-flower/data";
-import { Footer } from "./SitePage";
+import { Footer, Header } from "./SitePage";
 import ProductDetailClient from "./ProductDetailClient";
 import SiteHeadClient from "./SiteHeadClient";
 import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
@@ -10,6 +10,7 @@ import { SiteLoadingScreen, useLiveSiteData } from "./useLiveSiteData";
 export default function ProductLookupClient({ data: initialData }: { data: SiteData }) {
   const { data, isLoading } = useLiveSiteData(initialData);
   const [productId, setProductId] = useState("");
+  const [query, setQuery] = useState("");
 
   useEffect(() => {
     const readProductId = () => {
@@ -33,11 +34,7 @@ export default function ProductLookupClient({ data: initialData }: { data: SiteD
     return (
       <main>
         <SiteHeadClient data={data} />
-        <header className="site-header detail-header">
-          <a className="brand detail-brand" href="/">
-            <img src={data.assets.logo} alt={data.content.brandName || "Logo"} />
-          </a>
-        </header>
+        <Header data={data} query={query} setQuery={setQuery} />
         <p className="empty-state">Không tìm thấy sản phẩm.</p>
         <Footer data={data} />
       </main>
