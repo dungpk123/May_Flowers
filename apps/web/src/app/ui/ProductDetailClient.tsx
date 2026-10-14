@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import type { Product, SiteData } from "@shop-flower/data";
-import { Footer } from "./SitePage";
+import { FloatingContact, Footer } from "./SitePage";
 import SiteHeadClient from "./SiteHeadClient";
 import OrderModal from "./OrderModal";
 
@@ -47,9 +47,9 @@ export default function ProductDetailClient({
 }) {
   const relatedProducts = useMemo(
     () =>
-      data.products
-        .filter((item) => item.category === product.category && item.id !== product.id)
-        .slice(0, 4),
+      data.products.filter(
+        (item) => item.category === product.category && item.id !== product.id
+      ),
     [data.products, product.category, product.id]
   );
   const productImages = useMemo(() => getProductImages(product), [product]);
@@ -184,26 +184,8 @@ export default function ProductDetailClient({
 
       {product.description ? <ProductDescription text={product.description} /> : null}
 
-      {relatedProducts.length > 0 ? (
-        <section className="related-products">
-          <h2>Sản phẩm tương tự</h2>
-          <div className="product-grid">
-            {relatedProducts.map((item) => (
-              <a className="product-card" href={`/san-pham?id=${item.id}`} key={item.id}>
-                <div className="product-image">
-                  {item.badge ? <span>{item.badge}</span> : null}
-                  <img src={getProductImages(item)[0] ?? item.image} alt={item.name} />
-                </div>
-                <div className="product-info">
-                  <h3>{item.name}</h3>
-                  {item.price ? <strong>{money.format(item.price)}</strong> : null}
-                  <em>Xem chi tiết</em>
-                </div>
-              </a>
-            ))}
-          </div>
-        </section>
-      ) : null}
+      <RelatedProductsSection money={money} products={relatedProducts} />
+
       {product.price ? (
         <OrderModal
           data={data}
@@ -212,6 +194,7 @@ export default function ProductDetailClient({
           product={product}
         />
       ) : null}
+      <FloatingContact data={data} />
       <Footer data={data} />
     </main>
   );
@@ -316,4 +299,165 @@ function renderInlineMarkdown(text: string) {
 
     return part;
   });
+}
+
+function RelatedProductsSection({
+  products,
+  money
+}: {
+  products: Product[];
+  money: Intl.NumberFormat;
+}) {
+  if (products.length === 0) return null;
+
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      const width = window.innerWidth;
+      if (width < 500) {
+        setVisibleCount(2);
+      } else if (width < 768) {
+        setVisibleCount(3);
+      } else if (width < 1024) {
+        setVisibleCount(4);
+      } else {
+        setVisibleCount(5);
+      }
+    };
+
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, []);
+
+  const total = products.length;
+  const isSlider = total > 5;
+  const maxIndex = Math.max(0, total - visibleCount);
+
+  useEffect(() => {
+    if (!isSlider || isHovered || maxIndex <= 0) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isSlider, isHovered, maxIndex]);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+    if (diff > 40) {
+      handleNext();
+    } else if (diff < -40) {
+      handlePrev();
+    }
+    setTouchStart(null);
+  };
+
+  const safeIndex = Math.min(currentIndex, maxIndex);
+
+  return (
+    <section className="related-products-section">
+      <div className="related-products-header">
+        <h2>Sản phẩm tương tự</h2>
+      </div>
+
+      {!isSlider ? (
+        <div className="product-grid related-product-grid">
+          {products.map((item) => (
+            <RelatedProductCard item={item} key={item.id} money={money} />
+          ))}
+        </div>
+      ) : (
+        <div
+          className="related-slider-container"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchEnd={onTouchEnd}
+          onTouchStart={onTouchStart}
+        >
+          <button
+            aria-label="Sản phẩm trước"
+            className="related-slider-arrow related-slider-prev"
+            onClick={handlePrev}
+            type="button"
+          >
+            <ChevronLeft size={22} />
+          </button>
+
+          <div className="related-slider-viewport">
+            <div
+              className="related-slider-track"
+              style={{
+                transform: `translateX(calc(-${safeIndex} * (100% + 16px) / ${visibleCount}))`
+              }}
+            >
+              {products.map((item) => (
+                <div
+                  className="related-slider-card-wrap"
+                  key={item.id}
+                  style={{
+                    flex: `0 0 calc((100% - ${(visibleCount - 1) * 16}px) / ${visibleCount})`,
+                    minWidth: `calc((100% - ${(visibleCount - 1) * 16}px) / ${visibleCount})`,
+                    maxWidth: `calc((100% - ${(visibleCount - 1) * 16}px) / ${visibleCount})`
+                  }}
+                >
+                  <RelatedProductCard item={item} money={money} />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <button
+            aria-label="Sản phẩm sau"
+            className="related-slider-arrow related-slider-next"
+            onClick={handleNext}
+            type="button"
+          >
+            <ChevronRight size={22} />
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function RelatedProductCard({
+  item,
+  money
+}: {
+  item: Product;
+  money: Intl.NumberFormat;
+}) {
+  return (
+    <a className="product-card related-product-card" href={`/san-pham?id=${item.id}`}>
+      <div className="product-image">
+        {item.badge ? <span>{item.badge}</span> : null}
+        <img src={getProductImages(item)[0] ?? item.image} alt={item.name} />
+      </div>
+      <div className="product-info">
+        <h3>{item.name}</h3>
+        {item.price ? <strong>{money.format(item.price)}</strong> : null}
+        <em>Xem chi tiết</em>
+      </div>
+    </a>
+  );
 }

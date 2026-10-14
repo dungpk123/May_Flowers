@@ -47,6 +47,18 @@ type AdminToast = {
   tone: "success" | "error" | "info";
 };
 
+type SaveProgress = {
+  current: number;
+  message: string;
+  total: number;
+};
+
+type PendingProductUpload = {
+  file: File;
+  previewUrl: string;
+  previousUrl: string;
+};
+
 const homeFields: Array<{ key: ContentKey; label: string; multiline?: boolean }> = [
   { key: "siteTitle", label: "Tiêu đề trên tab trình duyệt" },
   { key: "brandName", label: "Tên thương hiệu" }
@@ -78,11 +90,16 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   const [productCategoryFilter, setProductCategoryFilter] = useState("");
   const [filteredProductIds, setFilteredProductIds] = useState<number[] | null>(null);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveProgress, setSaveProgress] = useState<SaveProgress | null>(null);
+  const [pendingProductUploads, setPendingProductUploads] = useState<Record<number, PendingProductUpload[]>>({});
   const [modal, setModal] = useState<AdminModal | null>(null);
   const [imageModalProductId, setImageModalProductId] = useState<number | null>(null);
   const hasUnsavedChanges = useMemo(
-    () => JSON.stringify(data) !== JSON.stringify(savedData),
-    [data, savedData]
+    () =>
+      JSON.stringify(data) !== JSON.stringify(savedData) ||
+      Object.keys(pendingProductUploads).length > 0,
+    [data, pendingProductUploads, savedData]
   );
   const categoryOptions = useMemo(
     () => sortAdminCategories(data.categories).map((category) => category.name).filter(Boolean),
@@ -112,6 +129,57 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
 
   function showToast(message: string, tone: AdminToast["tone"] = "info") {
     setToast({ message, tone });
+  }
+
+  function rememberPendingProductUpload(
+    productId: number,
+    file: File,
+    previewUrl: string,
+    previousUrl = ""
+  ) {
+    setPendingProductUploads((current) => ({
+      ...current,
+      [productId]: [
+        ...(current[productId] ?? []).filter((item) => item.previewUrl !== previousUrl),
+        { file, previewUrl, previousUrl }
+      ]
+    }));
+  }
+
+  function clearPendingProductUpload(productId: number, imageUrl: string) {
+    setPendingProductUploads((current) => {
+      const nextItems = (current[productId] ?? []).filter(
+        (item) => item.previewUrl !== imageUrl
+      );
+      const next = { ...current };
+      if (nextItems.length > 0) {
+        next[productId] = nextItems;
+      } else {
+        delete next[productId];
+      }
+      return next;
+    });
+  }
+
+  function queueProductImages(product: Product, files: File[], replaceIndex?: number) {
+    if (files.length === 0) return;
+
+    const currentImages = getProductImages(product);
+    const nextImages = [...currentImages];
+
+    files.forEach((file, fileIndex) => {
+      const previewUrl = URL.createObjectURL(file);
+      const targetIndex = replaceIndex === undefined ? nextImages.length : replaceIndex + fileIndex;
+      const previousUrl = nextImages[targetIndex] ?? "";
+      nextImages[targetIndex] = previewUrl;
+      rememberPendingProductUpload(product.id, file, previewUrl, previousUrl);
+    });
+
+    updateProductImages(data, setData, product.id, nextImages);
+    showToast(
+      `Đã chọn ${files.length} ảnh. Ảnh sẽ được tải lên Cloudinary khi bấm Lưu.`,
+      "success"
+    );
   }
 
   function updateContent(key: ContentKey, value: string) {
@@ -239,23 +307,99 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
   }
 
   async function save() {
-    showToast("Đang lưu thay đổi...", "info");
-    const response = await fetch(`${apiUrl}/site-data`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data)
-    });
+    if (isSaving) return false;
 
-    if (!response.ok) {
-      showToast("Chưa lưu được. Kiểm tra server rồi thử lại.", "error");
-      return false;
+    setIsSaving(true);
+    showToast("Đang lưu thay đổi...", "info");
+    setSaveProgress({ current: 0, total: countPendingUploads(pendingProductUploads), message: "Đang chuẩn bị lưu..." });
+
+    try {
+      const dataToSave = await uploadPendingProductImages();
+      if (!dataToSave) return false;
+
+      setSaveProgress({
+        current: countPendingUploads(pendingProductUploads),
+        total: countPendingUploads(pendingProductUploads),
+        message: "Đang lưu dữ liệu website..."
+      });
+
+      const response = await fetch(`${apiUrl}/site-data`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(dataToSave)
+      });
+
+      if (!response.ok) {
+        showToast("Chưa lưu được. Kiểm tra server rồi thử lại.", "error");
+        return false;
+      }
+
+      const nextData = await response.json();
+      setData(nextData);
+      setSavedData(nextData);
+      setPendingProductUploads({});
+      showToast("Đã lưu thay đổi.", "success");
+      return true;
+    } finally {
+      setIsSaving(false);
+      setSaveProgress(null);
+    }
+  }
+
+  async function uploadPendingProductImages() {
+    const pending = Object.entries(pendingProductUploads).flatMap(([productId, uploads]) =>
+      uploads.map((upload) => ({ ...upload, productId: Number(productId) }))
+    );
+
+    if (pending.length === 0) return data;
+
+    let nextData = data;
+    for (let index = 0; index < pending.length; index += 1) {
+      const upload = pending[index];
+      setSaveProgress({
+        current: index + 1,
+        total: pending.length,
+        message: `Đang tải ảnh ${index + 1}/${pending.length} lên Cloudinary...`
+      });
+      showToast(`Đang tải ảnh ${index + 1}/${pending.length} lên Cloudinary...`, "info");
+      const uploadedUrl = await uploadImageFile(
+        upload.file,
+        upload.previousUrl.startsWith("blob:") ? "" : upload.previousUrl,
+        `product-${upload.productId}-save-${index}`
+      );
+
+      if (!uploadedUrl) {
+        showToast(
+          `Dừng lưu vì ảnh ${index + 1}/${pending.length} chưa tải lên được.`,
+          "error"
+        );
+        return null;
+      }
+
+      nextData = {
+        ...nextData,
+        products: nextData.products.map((product) => {
+          if (product.id !== upload.productId) return product;
+
+          const images = getProductImages(product).map((image) =>
+            image === upload.previewUrl ? uploadedUrl : image
+          );
+
+          return {
+            ...product,
+            image: images[0] ?? "",
+            images
+          };
+        })
+      };
+      setData(nextData);
+
+      if (index < pending.length - 1) {
+        await wait(900);
+      }
     }
 
-    const nextData = await response.json();
-    setData(nextData);
-    setSavedData(nextData);
-    showToast("Đã lưu thay đổi.", "success");
-    return true;
+    return nextData;
   }
 
   function exitAdmin() {
@@ -400,6 +544,53 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
     );
   }
 
+  function addProductsFromImages(files: File[]) {
+    if (files.length === 0) return;
+
+    const selectedCategory = productCategoryFilter || data.categories[0]?.name || "";
+    const categoryProductCount = data.products.filter(
+      (product) => product.category === selectedCategory
+    ).length;
+    const productCode = getCategoryProductCode(selectedCategory);
+    const now = Date.now();
+    const newProducts = files.map((file, index) => {
+      const previewUrl = URL.createObjectURL(file);
+      const productId = now + index;
+      const productNumber = categoryProductCount + index + 1;
+
+      rememberPendingProductUpload(productId, file, previewUrl);
+
+      return {
+        id: productId,
+        name: selectedCategory
+          ? `${selectedCategory} - ${productCode}${productNumber}`
+          : `Sản phẩm - SP${data.products.length + index + 1}`,
+        category: selectedCategory,
+        image: previewUrl,
+        images: [previewUrl],
+        price: undefined,
+        badge: undefined
+      } satisfies Product;
+    });
+
+    setData({
+      ...data,
+      products: [...newProducts, ...data.products]
+    });
+
+    if (productCategoryFilter) {
+      setFilteredProductIds((currentIds) => [
+        ...newProducts.map((product) => product.id),
+        ...(currentIds ?? [])
+      ]);
+    }
+
+    showToast(
+      `Đã tạo ${newProducts.length} sản phẩm từ ảnh. Ảnh sẽ được tải lên khi bấm Lưu.`,
+      "success"
+    );
+  }
+
   function removeProduct(product: Product) {
     const productName = product.name || "chưa đặt tên";
     setModal({
@@ -411,6 +602,11 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         setData({
           ...data,
           products: data.products.filter((item) => item.id !== product.id)
+        });
+        setPendingProductUploads((current) => {
+          const next = { ...current };
+          delete next[product.id];
+          return next;
         });
         showToast(`Đã xóa sản phẩm "${productName}". Bấm Lưu để cập nhật website.`, "success");
       }
@@ -491,11 +687,11 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             <h1>Chỉnh sửa nội dung</h1>
           </div>
           <div className="admin-header-actions">
-            <button className="admin-exit-button" type="button" onClick={exitAdmin}>
+            <button className="admin-exit-button" disabled={isSaving} type="button" onClick={exitAdmin}>
               <LogOut size={18} /> Thoát
             </button>
-            <button type="button" onClick={save}>
-              <Save size={18} /> Lưu
+            <button disabled={isSaving} type="button" onClick={save}>
+              <Save size={18} /> {isSaving ? "Đang lưu..." : "Lưu"}
             </button>
           </div>
         </header>
@@ -867,7 +1063,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             </button>
           </div>
           <div className="admin-product-filter">
-            <label>
+            <label className="admin-product-filter-select">
               <span>Lọc theo danh mục</span>
               <select
                 disabled={isLoadingProducts}
@@ -881,6 +1077,19 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                   </option>
                 ))}
               </select>
+            </label>
+            <label className="admin-bulk-upload-button">
+              <input
+                accept="image/*"
+                multiple
+                onChange={(event) => {
+                  addProductsFromImages(Array.from(event.target.files ?? []));
+                  event.target.value = "";
+                }}
+                type="file"
+              />
+              <Plus size={16} />
+              Thêm hàng loạt ảnh
             </label>
             <strong>
               {isLoadingProducts
@@ -905,22 +1114,15 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
                   product={item}
                   uploadingField={uploadingField}
                   onOpenManager={() => setImageModalProductId(item.id)}
-                  onReplace={(file, imageIndex, previousUrl) =>
-                    uploadImage(
-                      file,
-                      previousUrl,
-                      (value) => {
-                        const nextImages = getProductImages(item);
-                        nextImages[imageIndex] = value;
-                        updateProductImages(data, setData, item.id, nextImages);
-                      },
-                      `product-${item.id}-${imageIndex}`
-                    )
+                  onReplace={(file, imageIndex) =>
+                    queueProductImages(item, [file], imageIndex)
                   }
                   onRemove={(imageIndex) => {
                     const nextImages = getProductImages(item).filter(
                       (_, currentIndex) => currentIndex !== imageIndex
                     );
+                    const removedImage = getProductImages(item)[imageIndex];
+                    if (removedImage) clearPendingProductUpload(item.id, removedImage);
                     updateProductImages(data, setData, item.id, nextImages);
                     showToast("Đã xóa ảnh khỏi sản phẩm. Bấm Lưu để cập nhật website.", "success");
                   }}
@@ -1044,6 +1246,7 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
         ) : null}
       </aside>
 
+      {saveProgress ? <SaveProgressDialog progress={saveProgress} /> : null}
       {activeSection === "overview" ? (
         <section className="admin-preview-pane">
           <header className="admin-preview-header">
@@ -1073,49 +1276,26 @@ export default function AdminClient({ initialData }: { initialData: SiteData }) 
             const product = data.products.find((item) => item.id === imageModalProductId);
             if (!product || files.length === 0) return;
 
-            const urls: string[] = [];
-            for (let index = 0; index < files.length; index += 1) {
-              const url = await uploadImageFile(
-                files[index],
-                "",
-                `product-${product.id}-bulk`
-              );
-              if (url) urls.push(url);
-            }
-
-            if (urls.length === 0) return;
-
-            updateProductImages(data, setData, product.id, [
-              ...getProductImages(product),
-              ...urls
-            ]);
-            showToast(`Đã thêm ${urls.length} ảnh. Bấm Lưu để cập nhật website.`, "success");
+            queueProductImages(product, files);
           }}
           onReplace={(file, imageIndex, previousUrl) => {
             const product = data.products.find((item) => item.id === imageModalProductId);
             if (!product) return;
 
-            void uploadImage(
-              file,
-              previousUrl,
-              (value) => {
-                const nextImages = getProductImages(product);
-                nextImages[imageIndex] = value;
-                updateProductImages(data, setData, product.id, nextImages);
-              },
-              `product-${product.id}-${imageIndex}`
-            );
+            queueProductImages(product, [file], imageIndex);
           }}
           onRemove={(imageIndex) => {
             const product = data.products.find((item) => item.id === imageModalProductId);
             if (!product) return;
 
+            const removedImage = getProductImages(product)[imageIndex];
             updateProductImages(
               data,
               setData,
               product.id,
               getProductImages(product).filter((_, currentIndex) => currentIndex !== imageIndex)
             );
+            if (removedImage) clearPendingProductUpload(product.id, removedImage);
             showToast("Đã xóa ảnh khỏi sản phẩm. Bấm Lưu để cập nhật website.", "success");
           }}
         />
@@ -1143,6 +1323,42 @@ function AdminToastMessage({
       <button type="button" onClick={onClose} aria-label="Đóng thông báo">
         <X size={16} />
       </button>
+    </div>
+  );
+}
+
+function SaveProgressDialog({ progress }: { progress: SaveProgress }) {
+  const percent =
+    progress.total > 0 ? Math.round((progress.current / progress.total) * 100) : 100;
+
+  return (
+    <div className="admin-modal-backdrop admin-progress-backdrop" role="presentation">
+      <div className="admin-modal admin-progress-modal" role="status" aria-live="polite">
+        <div className="admin-progress-icon">
+          <RefreshCw className="spinning" size={30} />
+        </div>
+        <div>
+          <p>Đang xử lý</p>
+          <h2>{progress.total > 0 ? "Đang tải ảnh lên" : "Đang lưu website"}</h2>
+          <span>{progress.message}</span>
+        </div>
+        {progress.total > 0 ? (
+          <>
+            <div className="admin-progress-count">
+              <strong>
+                {progress.current}/{progress.total}
+              </strong>
+              <span>{percent}%</span>
+            </div>
+            <div className="admin-progress-bar" aria-hidden="true">
+              <i style={{ width: `${percent}%` }} />
+            </div>
+            <small>Vui lòng không tắt trang trong lúc ảnh đang được tải từng cái một.</small>
+          </>
+        ) : (
+          <small>Vui lòng chờ trong giây lát.</small>
+        )}
+      </div>
     </div>
   );
 }
@@ -1655,4 +1871,45 @@ function sortAdminCategories(categories: Category[]) {
   return [...categories].sort(
     (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0) || a.id - b.id
   );
+}
+
+function countPendingUploads(pendingUploads: Record<number, PendingProductUpload[]>) {
+  return Object.values(pendingUploads).reduce((total, uploads) => total + uploads.length, 0);
+}
+
+function getCategoryProductCode(categoryName: string) {
+  const normalized = removeVietnameseTone(categoryName).toLowerCase();
+  const codeMap: Array<[string, string]> = [
+    ["gio trai cay", "TC"],
+    ["hoa chia buon", "HCB"],
+    ["hoa khai truong", "KT"],
+    ["hoa tuoi bo", "BH"],
+    ["bo hoa", "BH"],
+    ["hoa kim tuyen", "HKT"],
+    ["hoa sap", "HS"]
+  ];
+  const mappedCode = codeMap.find(([name]) => normalized.includes(name))?.[1];
+  if (mappedCode) return mappedCode;
+
+  const initials = removeVietnameseTone(categoryName)
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((word) => word[0])
+    .join("")
+    .toUpperCase();
+
+  return initials || "SP";
+}
+
+function removeVietnameseTone(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/đ/g, "d")
+    .replace(/Đ/g, "D")
+    .trim();
+}
+
+function wait(ms: number) {
+  return new Promise((resolve) => window.setTimeout(resolve, ms));
 }

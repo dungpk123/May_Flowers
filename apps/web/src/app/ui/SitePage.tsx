@@ -7,7 +7,7 @@ import {
   ChevronRight,
   Search
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { type Category, type Product, type SiteData } from "@shop-flower/data";
 import SiteHeadClient from "./SiteHeadClient";
 
@@ -76,21 +76,25 @@ export default function SitePage({ data, view }: { data: SiteData; view: SiteVie
       <SiteHeadClient data={data} />
       <Header data={data} query={query} setQuery={setQuery} />
       <MainNav categories={visibleCategories} />
+      <FloatingContact data={data} />
 
       {view === "home" ? (
         <>
           <Hero data={data} />
-          <FloatingContact data={data} />
           <CategoryGrid categories={visibleCategories} />
           <div id="products" />
           {newProducts.length > 0 ? (
             <ProductArea
+              limit={10}
+              moreHref="/bo-hoa"
               products={newProducts}
               title="Sản phẩm mới"
             />
           ) : null}
           {hotProducts.length > 0 ? (
             <ProductArea
+              limit={10}
+              moreHref="/bo-hoa"
               products={hotProducts}
               title="Sản phẩm hot"
             />
@@ -259,16 +263,141 @@ function CategoryGrid({ categories }: { categories: Category[] }) {
     return null;
   }
 
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(5);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+
+  useEffect(() => {
+    const updateVisibleCount = () => {
+      const width = window.innerWidth;
+      if (width < 500) {
+        setVisibleCount(2);
+      } else if (width < 768) {
+        setVisibleCount(3);
+      } else if (width < 1024) {
+        setVisibleCount(4);
+      } else {
+        setVisibleCount(5);
+      }
+    };
+
+    updateVisibleCount();
+    window.addEventListener("resize", updateVisibleCount);
+    return () => window.removeEventListener("resize", updateVisibleCount);
+  }, []);
+
+  const total = categories.length;
+  const isSlider = total > 5;
+  const maxIndex = Math.max(0, total - visibleCount);
+
+  // Tự động di chuyển danh mục sau 3.8s nếu có trên 5 danh mục và không bị hover
+  useEffect(() => {
+    if (!isSlider || isHovered || maxIndex <= 0) return;
+
+    const interval = setInterval(() => {
+      setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
+    }, 3800);
+
+    return () => clearInterval(interval);
+  }, [isSlider, isHovered, maxIndex]);
+
+  const handlePrev = () => {
+    setCurrentIndex((prev) => (prev <= 0 ? maxIndex : prev - 1));
+  };
+
+  const handleNext = () => {
+    setCurrentIndex((prev) => (prev >= maxIndex ? 0 : prev + 1));
+  };
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = (e: React.TouchEvent) => {
+    if (touchStart === null) return;
+    const touchEnd = e.changedTouches[0].clientX;
+    const diff = touchStart - touchEnd;
+    if (diff > 40) {
+      handleNext();
+    } else if (diff < -40) {
+      handlePrev();
+    }
+    setTouchStart(null);
+  };
+
+  if (!isSlider) {
+    return (
+      <>
+        <SectionTitle title="Danh mục sản phẩm" />
+        <section className="category-grid">
+          {categories.map((category) => (
+            <a
+              className="category-card"
+              href={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
+              key={category.id}
+            >
+              {category.image ? <img src={category.image} alt={category.name} /> : null}
+              <strong>{category.name}</strong>
+            </a>
+          ))}
+        </section>
+      </>
+    );
+  }
+
+  const safeIndex = Math.min(currentIndex, maxIndex);
+
   return (
     <>
       <SectionTitle title="Danh mục sản phẩm" />
-      <section className="category-grid">
-        {categories.map((category) => (
-          <a className="category-card" href={`/bo-hoa?category=${encodeURIComponent(category.name)}`} key={category.id}>
-            {category.image ? <img src={category.image} alt={category.name} /> : null}
-            <strong>{category.name}</strong>
-          </a>
-        ))}
+      <section
+        className="category-slider-container"
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        onTouchEnd={onTouchEnd}
+        onTouchStart={onTouchStart}
+      >
+        <button
+          aria-label="Danh mục trước"
+          className="category-slider-arrow category-slider-prev"
+          onClick={handlePrev}
+          type="button"
+        >
+          <ChevronLeft size={22} />
+        </button>
+
+        <div className="category-slider-viewport">
+          <div
+            className="category-slider-track"
+            style={{
+              transform: `translateX(calc(-${safeIndex} * (100% + 14px) / ${visibleCount}))`
+            }}
+          >
+            {categories.map((category) => (
+              <a
+                className="category-card category-slider-card"
+                href={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
+                key={category.id}
+                style={{
+                  flex: `0 0 calc((100% - (${visibleCount - 1} * 14px)) / ${visibleCount})`
+                }}
+              >
+                {category.image ? <img src={category.image} alt={category.name} /> : null}
+                <strong>{category.name}</strong>
+              </a>
+            ))}
+          </div>
+        </div>
+
+        <button
+          aria-label="Danh mục sau"
+          className="category-slider-arrow category-slider-next"
+          onClick={handleNext}
+          type="button"
+        >
+          <ChevronRight size={22} />
+        </button>
       </section>
     </>
   );
@@ -295,48 +424,74 @@ function ProductCategoryAreas({
       {groups.map(({ category, products: categoryProducts }) => (
         <ProductArea
           key={category.id}
+          limit={10}
           moreHref={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
           products={categoryProducts}
           title={category.name}
         />
       ))}
       {otherProducts.length > 0 ? (
-        <ProductArea products={otherProducts} title="Sản phẩm khác" />
+        <ProductArea
+          limit={10}
+          moreHref="/bo-hoa"
+          products={otherProducts}
+          title="Sản phẩm khác"
+        />
       ) : null}
     </>
   );
 }
 
 function ProductArea({
+  limit,
   moreHref,
   products,
   title
 }: {
+  limit?: number;
   moreHref?: string;
   products: Product[];
   title: string;
 }) {
+  const displayedProducts = limit ? products.slice(0, limit) : products;
+  const hasMore = limit ? products.length > limit : false;
+  const remainingCount = products.length - (limit ?? 0);
+
   return (
     <section className="product-section">
       <SectionTitle moreHref={moreHref} title={title} />
       {products.length === 0 ? (
         <EmptyState text="Chưa có sản phẩm phù hợp." />
       ) : (
-        <div className="product-grid">
-          {products.map((product) => (
-            <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
-              <div className="product-image">
-                {product.badge ? <span>{product.badge}</span> : null}
-                <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
-              </div>
-              <div className="product-info">
-                <h3>{product.name}</h3>
-                {product.price ? <strong>{money.format(product.price)}</strong> : null}
-                <em>Xem chi tiết</em>
-              </div>
-            </a>
-          ))}
-        </div>
+        <>
+          <div className="product-grid">
+            {displayedProducts.map((product) => (
+              <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
+                <div className="product-image">
+                  {product.badge ? <span>{product.badge}</span> : null}
+                  <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
+                </div>
+                <div className="product-info">
+                  <h3>{product.name}</h3>
+                  {product.price ? <strong>{money.format(product.price)}</strong> : null}
+                  <em>Xem chi tiết</em>
+                </div>
+              </a>
+            ))}
+          </div>
+
+          {hasMore ? (
+            <div className="product-see-more-wrap">
+              <a
+                className="product-see-more-btn"
+                href={moreHref || `/bo-hoa?category=${encodeURIComponent(title)}`}
+              >
+                <span>Xem thêm {remainingCount} sản phẩm &ldquo;{title}&rdquo;</span>
+                <ChevronRight size={18} />
+              </a>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   );
@@ -402,13 +557,23 @@ function ContentPage({
   );
 }
 
-function SectionTitle({ moreHref, title }: { moreHref?: string; title: string }) {
+function SectionTitle({
+  moreHref,
+  sliderControls,
+  title
+}: {
+  moreHref?: string;
+  sliderControls?: React.ReactNode;
+  title: string;
+}) {
   return (
     <div className="section-title">
       <span>
         <CheckCircle2 size={16} /> {title}
       </span>
-      {moreHref ? (
+      {sliderControls ? (
+        sliderControls
+      ) : moreHref ? (
         <a href={moreHref}>
           Xem thêm <ChevronRight size={16} />
         </a>
@@ -456,7 +621,7 @@ export function Footer({ data }: { data: SiteData }) {
   );
 }
 
-function FloatingContact({ data }: { data: SiteData }) {
+export function FloatingContact({ data }: { data: SiteData }) {
   return (
     <div className="floating-contact" aria-label="Liên hệ nhanh">
       {data.content.zaloUrl ? (

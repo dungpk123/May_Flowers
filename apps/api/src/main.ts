@@ -142,7 +142,7 @@ class AppController {
 @Module({
   controllers: [AppController]
 })
-class AppModule {}
+class AppModule { }
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
