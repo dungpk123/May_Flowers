@@ -279,16 +279,23 @@ textarea {
 .hero-backgrounds img {
   height: 100%;
   left: 0;
-  opacity: 0;
   object-fit: cover;
   position: absolute;
   top: 0;
-  transition: opacity 0.9s ease-in-out;
+  transform: translateX(100%);
+  transition: transform 0.85s cubic-bezier(0.22, 0.75, 0.25, 1);
   width: 100%;
+  z-index: 0;
 }
 
 .hero-backgrounds img.active {
-  opacity: 1;
+  transform: translateX(0);
+  z-index: 2;
+}
+
+.hero-backgrounds img.previous {
+  transform: translateX(-100%);
+  z-index: 1;
 }
 
 .hero-actions {

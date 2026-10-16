@@ -249,20 +249,28 @@ function MainNav({ categories }: { categories: Category[] }) {
 
 function Hero({ data }: { data: SiteData }) {
   const [activeSlide, setActiveSlide] = useState(0);
+  const [previousSlide, setPreviousSlide] = useState(-1);
   const backgrounds = (data.assets.backgroundImages?.length
     ? data.assets.backgroundImages
     : [data.assets.background]
   ).filter((image) => /^https?:\/\//i.test(image.trim()));
   const slideCount = backgrounds.length;
   const goToSlide = (direction: -1 | 1) => {
-    setActiveSlide((current) => (current + direction + slideCount) % slideCount);
+    if (slideCount < 2) return;
+    setActiveSlide((current) => {
+      setPreviousSlide(current);
+      return (current + direction + slideCount) % slideCount;
+    });
   };
 
   useEffect(() => {
     if (slideCount < 2) return;
     const timer = window.setInterval(() => {
-      setActiveSlide((current) => (current + 1) % slideCount);
-    }, 6500);
+      setActiveSlide((current) => {
+        setPreviousSlide(current);
+        return (current + 1) % slideCount;
+      });
+    }, 5000);
     return () => window.clearInterval(timer);
   }, [slideCount]);
 
@@ -274,7 +282,13 @@ function Hero({ data }: { data: SiteData }) {
         {backgrounds.map((image, index) => (
           <img
             alt=""
-            className={index === activeSlide ? "active" : ""}
+            className={
+              index === activeSlide
+                ? "active"
+                : index === previousSlide
+                  ? "previous"
+                  : ""
+            }
             key={`${image}-${index}`}
             src={image}
           />
