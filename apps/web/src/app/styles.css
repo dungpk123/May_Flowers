@@ -256,59 +256,55 @@ textarea {
 }
 
 .hero {
-  background: #f6f7f4;
-  min-height: 450px;
+  background: #fff8f8;
   overflow: hidden;
   position: relative;
+  width: 100%;
 }
 
 .hero-gallery {
   display: block;
-  height: min(68vh, 620px);
-  min-height: 430px;
+  height: auto;
+  margin: 0 auto;
+  max-width: min(100%, calc((100vh - 165px) * 1.79), 1180px);
+  min-height: 0;
+  position: relative;
+  width: 100%;
 }
 
 .hero-backgrounds {
-  height: 100%;
-  left: 0;
-  position: absolute;
-  top: 0;
+  cursor: pointer;
+  display: grid;
+  position: relative;
+  text-decoration: none;
   width: 100%;
 }
 
 .hero-backgrounds img {
-  height: 100%;
-  left: 0;
-  object-fit: cover;
-  position: absolute;
-  top: 0;
-  transform: translateX(100%);
-  transition: transform 0.85s cubic-bezier(0.22, 0.75, 0.25, 1);
+  display: block;
+  grid-area: 1 / 1 / 2 / 2;
+  height: auto;
+  object-fit: contain;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.8s ease-in-out;
   width: 100%;
   z-index: 0;
 }
 
 .hero-backgrounds img.active {
-  transform: translateX(0);
+  opacity: 1;
+  pointer-events: auto;
   z-index: 2;
 }
 
 .hero-backgrounds img.previous {
-  transform: translateX(-100%);
+  opacity: 0;
   z-index: 1;
 }
 
 .hero-actions {
-  bottom: 38px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  justify-content: center;
-  left: 50%;
-  position: absolute;
-  transform: translateX(-50%);
-  width: min(460px, calc(100% - 32px));
-  z-index: 2;
+  display: none;
 }
 
 .hero-nav {
@@ -604,6 +600,79 @@ textarea {
   padding-bottom: 20px;
 }
 
+/* Scroll Reveal Animation: slide up and fade in smoothly */
+.scroll-reveal {
+  opacity: 0;
+  transform: translateY(45px);
+  transition: opacity 0.75s cubic-bezier(0.16, 1, 0.3, 1), transform 0.75s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Staggered product cards moving from bottom up */
+.product-section.scroll-reveal .product-card {
+  opacity: 0;
+  transform: translateY(35px);
+  transition: opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1), transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  will-change: opacity, transform;
+}
+
+.product-section.scroll-reveal.is-visible .product-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Category cards inside slider/grid moving from bottom up */
+.category-section-wrap.scroll-reveal .category-card {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.25s ease;
+  will-change: opacity, transform;
+}
+
+.category-section-wrap.scroll-reveal.is-visible .category-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Article cards moving from bottom up */
+.scroll-reveal .article-card {
+  opacity: 0;
+  transform: translateY(30px);
+  transition: opacity 0.55s cubic-bezier(0.16, 1, 0.3, 1), transform 0.55s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.scroll-reveal.is-visible .article-card {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Admin preview always visible */
+.admin-site-preview .scroll-reveal,
+.admin-site-preview .product-card,
+.admin-site-preview .category-card,
+.admin-site-preview .article-card {
+  opacity: 1 !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scroll-reveal,
+  .product-section.scroll-reveal .product-card,
+  .category-section-wrap.scroll-reveal .category-card,
+  .scroll-reveal .article-card {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
 /* Product See More Button */
 .product-see-more-wrap {
   display: flex;
@@ -829,12 +898,13 @@ footer p {
 }
 
 .floating-contact {
+  bottom: 36px;
   display: grid;
   gap: 12px;
-  left: 22px;
+  left: 24px;
   position: fixed;
-  top: 48%;
-  z-index: 11;
+  top: auto;
+  z-index: 998;
 }
 
 .floating-contact a {
@@ -845,17 +915,158 @@ footer p {
   box-shadow: 0 8px 24px rgba(23, 59, 31, 0.16);
   color: var(--green);
   display: inline-flex;
-  height: 58px;
+  height: 52px;
   justify-content: center;
-  width: 58px;
+  transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+  width: 52px;
+}
+
+.floating-contact a:hover {
+  box-shadow: 0 12px 28px rgba(23, 59, 31, 0.24);
+  transform: translateY(-3px) scale(1.08);
 }
 
 .floating-contact img,
 .footer-socials img {
   display: block;
-  height: 36px;
+  height: 32px;
   object-fit: contain;
-  width: 36px;
+  width: 32px;
+}
+
+/* Floating Hotline on the right with ripple & shake */
+.floating-hotline-wrap {
+  align-items: center;
+  bottom: 28px;
+  display: flex;
+  height: 84px;
+  justify-content: center;
+  pointer-events: none;
+  position: fixed;
+  right: 28px;
+  width: 84px;
+  z-index: 999;
+}
+
+.hotline-btn-link {
+  align-items: center;
+  display: flex;
+  height: 84px;
+  justify-content: center;
+  pointer-events: auto;
+  position: relative;
+  text-decoration: none;
+  width: 84px;
+}
+
+/* Outer translucent ripple wave (sóng lan tỏa) */
+.hotline-ripple-wave {
+  animation: hotline-ripple 1.8s infinite ease-out;
+  background-color: rgba(235, 52, 52, 0.22);
+  border-radius: 50%;
+  height: 80px;
+  pointer-events: none;
+  position: absolute;
+  width: 80px;
+}
+
+/* Secondary border ripple */
+.hotline-circle-border {
+  animation: hotline-border-pulse 1.4s infinite ease-in-out;
+  border: 2px solid rgba(235, 52, 52, 0.45);
+  border-radius: 50%;
+  height: 68px;
+  pointer-events: none;
+  position: absolute;
+  width: 68px;
+}
+
+/* Main red button circle */
+.hotline-btn-inner {
+  align-items: center;
+  animation: hotline-shake 1.3s infinite ease-in-out;
+  background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+  border-radius: 50%;
+  box-shadow: 0 6px 20px rgba(211, 47, 47, 0.48);
+  color: #ffffff;
+  display: flex;
+  height: 54px;
+  justify-content: center;
+  position: relative;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  width: 54px;
+}
+
+.hotline-btn-link:hover .hotline-btn-inner {
+  box-shadow: 0 8px 26px rgba(211, 47, 47, 0.65);
+  transform: scale(1.12);
+}
+
+.hotline-phone-icon {
+  color: #fff;
+  display: block;
+}
+
+/* Keyframes for shake / ring animation */
+@keyframes hotline-shake {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+  8% {
+    transform: rotate(-22deg) scale(1.05);
+  }
+  16% {
+    transform: rotate(22deg) scale(1.05);
+  }
+  24% {
+    transform: rotate(-18deg) scale(1.05);
+  }
+  32% {
+    transform: rotate(18deg) scale(1.05);
+  }
+  40% {
+    transform: rotate(-10deg) scale(1.02);
+  }
+  48% {
+    transform: rotate(10deg) scale(1.02);
+  }
+  56% {
+    transform: rotate(0deg) scale(1);
+  }
+  100% {
+    transform: rotate(0deg) scale(1);
+  }
+}
+
+/* Keyframes for outer ripple wave */
+@keyframes hotline-ripple {
+  0% {
+    opacity: 0.9;
+    transform: scale(0.65);
+  }
+  60% {
+    opacity: 0.35;
+    transform: scale(1.15);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.4);
+  }
+}
+
+@keyframes hotline-border-pulse {
+  0% {
+    opacity: 0.8;
+    transform: scale(0.75);
+  }
+  60% {
+    opacity: 0.25;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.3);
+  }
 }
 
 .footer-socials {
@@ -2391,19 +2602,26 @@ footer p {
 }
 
 .admin-site-preview .floating-contact {
+  bottom: 24px;
   left: 18px;
   position: absolute;
-  top: 460px;
+  top: auto;
 }
 
 .admin-site-preview .floating-contact a {
-  height: 52px;
-  width: 52px;
+  height: 48px;
+  width: 48px;
 }
 
 .admin-site-preview .floating-contact img {
-  height: 32px;
-  width: 32px;
+  height: 28px;
+  width: 28px;
+}
+
+.admin-site-preview .floating-hotline-wrap {
+  bottom: 20px;
+  position: absolute;
+  right: 18px;
 }
 
 .preview-topbar {
@@ -2811,12 +3029,12 @@ footer p {
   }
 
   .floating-contact {
-    bottom: 24px;
+    bottom: 20px;
     display: grid !important;
     gap: 8px;
-    left: 12px;
+    left: 14px;
     top: auto;
-    z-index: 999;
+    z-index: 998;
   }
 
   .floating-contact a {
@@ -2828,6 +3046,38 @@ footer p {
   .floating-contact img {
     height: 28px;
     width: 28px;
+  }
+
+  .floating-hotline-wrap {
+    bottom: 16px;
+    height: 72px;
+    right: 14px;
+    width: 72px;
+  }
+
+  .hotline-btn-link {
+    height: 72px;
+    width: 72px;
+  }
+
+  .hotline-ripple-wave {
+    height: 68px;
+    width: 68px;
+  }
+
+  .hotline-circle-border {
+    height: 58px;
+    width: 58px;
+  }
+
+  .hotline-btn-inner {
+    height: 46px;
+    width: 46px;
+  }
+
+  .hotline-phone-icon {
+    height: 22px;
+    width: 22px;
   }
 
   .related-products-section {

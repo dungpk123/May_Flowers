@@ -276,12 +276,10 @@ function Hero({ data }: { data: SiteData }) {
 
   return (
     <section className="hero hero-gallery">
-      <div
-        className="hero-backgrounds"
-      >
+      <a className="hero-backgrounds" href="#products" aria-label="Xem danh mục sản phẩm">
         {backgrounds.map((image, index) => (
           <img
-            alt=""
+            alt="Banner May Flowers"
             className={
               index === activeSlide
                 ? "active"
@@ -293,7 +291,7 @@ function Hero({ data }: { data: SiteData }) {
             src={image}
           />
         ))}
-      </div>
+      </a>
       {slideCount > 1 ? (
         <>
           <button
@@ -314,11 +312,6 @@ function Hero({ data }: { data: SiteData }) {
           </button>
         </>
       ) : null}
-      <div className="hero-actions">
-        <a className="primary-action" href="#products">
-          Xem sản phẩm <ArrowRight size={18} />
-        </a>
-      </div>
     </section>
   );
 }
@@ -340,11 +333,45 @@ function PageHero({ title, data }: { title: string; data: SiteData }) {
   );
 }
 
+function useInView(options?: { threshold?: number; rootMargin?: string }) {
+  const ref = useRef<HTMLDivElement | null>(null);
+  const [isInView, setIsInView] = useState(false);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === "undefined") {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.unobserve(el);
+        }
+      },
+      {
+        threshold: options?.threshold ?? 0.08,
+        rootMargin: options?.rootMargin ?? "0px 0px -40px 0px"
+      }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [options?.threshold, options?.rootMargin]);
+
+  return [ref, isInView] as const;
+}
+
 function CategoryGrid({ categories }: { categories: Category[] }) {
   if (categories.length === 0) {
     return null;
   }
 
+  const [ref, inView] = useInView();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
   const [visibleCount, setVisibleCount] = useState(5);
@@ -410,28 +437,29 @@ function CategoryGrid({ categories }: { categories: Category[] }) {
 
   if (!isSlider) {
     return (
-      <>
+      <div ref={ref} className={`category-section-wrap scroll-reveal ${inView ? "is-visible" : ""}`}>
         <SectionTitle title="Danh mục sản phẩm" />
         <section className="category-grid">
-          {categories.map((category) => (
+          {categories.map((category, idx) => (
             <a
               className="category-card"
               href={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
               key={category.id}
+              style={{ transitionDelay: `${Math.min(idx * 0.05, 0.35)}s` }}
             >
               {category.image ? <img src={category.image} alt={category.name} /> : null}
               <strong>{category.name}</strong>
             </a>
           ))}
         </section>
-      </>
+      </div>
     );
   }
 
   const safeIndex = Math.min(currentIndex, maxIndex);
 
   return (
-    <>
+    <div ref={ref} className={`category-section-wrap scroll-reveal ${inView ? "is-visible" : ""}`}>
       <SectionTitle title="Danh mục sản phẩm" />
       <section
         className="category-slider-container"
@@ -456,13 +484,14 @@ function CategoryGrid({ categories }: { categories: Category[] }) {
               transform: `translateX(calc(-${safeIndex} * (100% + 14px) / ${visibleCount}))`
             }}
           >
-            {categories.map((category) => (
+            {categories.map((category, idx) => (
               <a
                 className="category-card category-slider-card"
                 href={`/bo-hoa?category=${encodeURIComponent(category.name)}`}
                 key={category.id}
                 style={{
-                  flex: `0 0 calc((100% - (${visibleCount - 1} * 14px)) / ${visibleCount})`
+                  flex: `0 0 calc((100% - (${visibleCount - 1} * 14px)) / ${visibleCount})`,
+                  transitionDelay: `${Math.min(idx * 0.05, 0.35)}s`
                 }}
               >
                 {category.image ? <img src={category.image} alt={category.name} /> : null}
@@ -481,7 +510,7 @@ function CategoryGrid({ categories }: { categories: Category[] }) {
           <ChevronRight size={22} />
         </button>
       </section>
-    </>
+    </div>
   );
 }
 
@@ -535,20 +564,29 @@ function ProductArea({
   products: Product[];
   title: string;
 }) {
+  const [ref, inView] = useInView();
   const displayedProducts = limit ? products.slice(0, limit) : products;
   const hasMore = limit ? products.length > limit : false;
   const remainingCount = products.length - (limit ?? 0);
 
   return (
-    <section className="product-section">
+    <section
+      ref={ref}
+      className={`product-section scroll-reveal ${inView ? "is-visible" : ""}`}
+    >
       <SectionTitle moreHref={moreHref} title={title} />
       {products.length === 0 ? (
         <EmptyState text="Chưa có sản phẩm phù hợp." />
       ) : (
         <>
           <div className="product-grid">
-            {displayedProducts.map((product) => (
-              <a className="product-card" href={`/san-pham?id=${product.id}`} key={product.id}>
+            {displayedProducts.map((product, idx) => (
+              <a
+                className="product-card"
+                href={`/san-pham?id=${product.id}`}
+                key={product.id}
+                style={{ transitionDelay: `${Math.min(idx * 0.05, 0.4)}s` }}
+              >
                 <div className="product-image">
                   {product.badge ? <span>{product.badge}</span> : null}
                   <img src={getProductImages(product)[0] ?? product.image} alt={product.name} />
@@ -599,16 +637,21 @@ function Cta({ data }: { data: SiteData }) {
 }
 
 function ArticleGrid({ data, compact = false }: { data: SiteData; compact?: boolean }) {
+  const [ref, inView] = useInView();
   if (data.articles.length === 0) {
     return compact ? null : <EmptyState text="Chưa có bài viết." />;
   }
 
   return (
-    <>
+    <div ref={ref} className={`scroll-reveal ${inView ? "is-visible" : ""}`}>
       <SectionTitle title="Bài viết - Tin tức" />
       <section className="article-grid">
-        {data.articles.map((article) => (
-          <article className="article-card" key={article.id}>
+        {data.articles.map((article, idx) => (
+          <article
+            className="article-card"
+            key={article.id}
+            style={{ transitionDelay: `${Math.min(idx * 0.08, 0.4)}s` }}
+          >
             <img src={article.image} alt={article.title} />
             <div>
               <h3>{article.title}</h3>
@@ -617,7 +660,7 @@ function ArticleGrid({ data, compact = false }: { data: SiteData; compact?: bool
           </article>
         ))}
       </section>
-    </>
+    </div>
   );
 }
 
@@ -705,23 +748,57 @@ export function Footer({ data }: { data: SiteData }) {
 
 export function FloatingContact({ data }: { data: SiteData }) {
   return (
-    <div className="floating-contact" aria-label="Liên hệ nhanh">
-      {data.content.zaloUrl ? (
-        <a href={zaloUrl(data.content.zaloUrl)} aria-label="Zalo" rel="noreferrer" target="_blank">
-          <img src={data.assets.zaloIcon} alt="" />
-        </a>
-      ) : null}
-      {data.content.facebookUrl ? (
-        <a href={externalUrl(data.content.facebookUrl)} aria-label="Facebook" rel="noreferrer" target="_blank">
-          <img src={data.assets.facebookIcon} alt="" />
-        </a>
-      ) : null}
+    <>
+      <div className="floating-contact" aria-label="Liên hệ nhanh">
+        {data.content.zaloUrl ? (
+          <a
+            href={zaloUrl(data.content.zaloUrl)}
+            aria-label="Zalo"
+            title="Chat Zalo"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <img src={data.assets.zaloIcon} alt="Zalo" />
+          </a>
+        ) : null}
+        {data.content.facebookUrl ? (
+          <a
+            href={externalUrl(data.content.facebookUrl)}
+            aria-label="Facebook"
+            title="Nhắn tin Facebook"
+            rel="noreferrer"
+            target="_blank"
+          >
+            <img src={data.assets.facebookIcon} alt="Facebook" />
+          </a>
+        ) : null}
+      </div>
+
       {data.content.hotline ? (
-        <a href={phoneUrl(data.content.hotline)} aria-label="Số điện thoại" rel="noreferrer" target="_blank">
-          <img src={data.assets.phoneIcon} alt="" />
-        </a>
+        <div className="floating-hotline-wrap" aria-label="Hotline liên hệ">
+          <a
+            href={phoneUrl(data.content.hotline)}
+            aria-label={`Hotline: ${data.content.hotline}`}
+            title={`Gọi ngay: ${data.content.hotline}`}
+            className="hotline-btn-link"
+          >
+            <span className="hotline-ripple-wave" />
+            <span className="hotline-circle-border" />
+            <span className="hotline-btn-inner">
+              <svg
+                className="hotline-phone-icon"
+                viewBox="0 0 24 24"
+                width="26"
+                height="26"
+                fill="currentColor"
+              >
+                <path d="M6.62 10.79a15.053 15.053 0 006.59 6.59l2.2-2.2a1 1 0 011.02-.24c1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20a1 1 0 01-1 1A17 17 0 013 4a1 1 0 011-1h3.5a1 1 0 011 1c0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z" />
+              </svg>
+            </span>
+          </a>
+        </div>
       ) : null}
-    </div>
+    </>
   );
 }
 
